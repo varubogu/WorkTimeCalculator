@@ -1,0 +1,139 @@
+import type { DayData, MonthData, Settings } from "./types";
+import JP_HOLIDAYS from "./holidays";
+import { isoDate, loadEntry } from "./storage";
+
+export function timeToMinutes(t: string): number | null {
+  if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return null;
+  const [h, m] = t.split(":").map(Number);
+  if (h > 23 || m > 59) return null;
+  return h * 60 + m;
+}
+
+export function netMinutes(start: string, end: string, brk: number): number | null {
+  const s = timeToMinutes(start);
+  const e = timeToMinutes(end);
+  if (s === null || e === null || e <= s) return null;
+  return Math.max(0, (e - s) - (brk || 0));
+}
+
+export function addMinutesToTime(start: string, minutes: number): string | null {
+  const s = timeToMinutes(start);
+  const total = s === null ? null : s + Math.round(minutes || 0);
+  if (total === null || total >= 24 * 60) return null;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+export function fmtH(fractionalHours: number | null | undefined): string {
+  if (fractionalHours == null) return "—";
+  const h = Math.floor(fractionalHours);
+  const m = Math.round((fractionalHours - h) * 60);
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
+}
+
+export function getRealMonthData(
+  year: number,
+  month: number,
+  settings: Settings,
+  useHolidays: boolean,
+  holidayDates: ReadonlySet<string> = JP_HOLIDAYS,
+): DayData[] {
+  const holidays = useHolidays ? holidayDates : new Set<string>();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = isoDate(today.getFullYear(), today.getMonth(), today.getDate());
+  const out: DayData[] = [];
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date      = new Date(year, month, d);
+    const dow       = date.getDay();
+    const dateStr   = isoDate(year, month, d);
+    const isWorking = [1, 2, 3, 4, 5].includes(dow);
+    const isHoliday = holidays.has(dateStr);
+    const isToday   = dateStr === todayStr;
+    const entry     = loadEntry(dateStr, settings.breakMin);
+    const net       = (!entry.vac && entry.start && entry.end)
+      ? netMinutes(entry.start, entry.end, entry.brk)
+      : null;
+    const hrs = net !== null ? net / 60 : 0;
+
+    let kind: DayData["kind"];
+    if (entry.vac) {
+      kind = "vac";
+    } else if (!isWorking && hrs > 0) {
+      kind = "wknd";
+    } else if (isHoliday && hrs > 0) {
+      kind = "ot";
+    } else if (isHoliday) {
+      kind = "holi";
+    } else if (!isWorking) {
+      kind = "off";
+    } else if (hrs === 0) {
+      kind = "off";
+    } else if (hrs > settings.dayHours) {
+      kind = "ot";
+    } else {
+      kind = "reg";
+    }
+
+    out.push({ d, date, dow, kind, hrs, isHoliday, isWorking, isToday, dateStr, entry });
+  }
+  return out;
+}
+
+export function sumHours(data: DayData[]): number {
+  return Math.round(data.reduce((s, d) => s + (d.hrs || 0), 0) * 10) / 10;
+}
+
+export function buildMonthsData(
+  year: number,
+  settings: Settings,
+  holidayDates: ReadonlySet<string> = JP_HOLIDAYS,
+): MonthData[] {
+  return Array.from({ length: 12 }, (_, i) => ({
+    m:    i,
+    data: getRealMonthData(year, i, settings, settings.showHolidays, holidayDates),
+  }));
+}
+
+export function exportCSV(monthsData: MonthData[], year: number): void {
+  const rows: string[][] = [["Date", "Start", "End", "Break(min)", "Hours", "Type"]];
+  for (const { data } of monthsData) {
+    for (const d of data) {
+      if (d.hrs > 0 || d.entry.vac) {
+        rows.push([
+          d.dateStr,
+          d.entry.start || "",
+          d.entry.end   || "",
+          String(d.entry.brk ?? 0),
+          d.hrs.toFixed(2),
+          d.kind,
+        ]);
+      }
+    }
+  }
+  const csv  = rows.map(r => r.join(",")).join("\n");
+  download(`workhours-${year}.csv`, new Blob([csv], { type: "text/csv" }));
+}
+
+export function exportJSON(monthsData: MonthData[], year: number): void {
+  const data: Record<string, unknown> = {};
+  for (const { data: days } of monthsData) {
+    for (const d of days) {
+      if (d.hrs > 0 || d.entry.vac) {
+        data[d.dateStr] = d.entry;
+      }
+    }
+  }
+  download(`workhours-${year}.json`, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+}
+
+function download(filename: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
