@@ -190,7 +190,7 @@ export default function App() {
         </div>
         <div className="row gap-8" style={{ alignItems: "center" }}>
           <button className="btn sm" onClick={handleFillRegularHours}>{t.bulkRegularFill}</button>
-          <span className="caveat" style={{ fontSize: 22 }}>{currentTotal}h</span>
+          <span className="caveat" aria-label={t.totalHours} style={{ fontSize: 22 }}>{currentTotal}h</span>
           <DeltaChip value={currentTotal} min={settings.monthTargetMin} max={settings.monthTargetMax} t={t} />
         </div>
       </div>

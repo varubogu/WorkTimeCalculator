@@ -35,9 +35,18 @@ bun run build
 bun start
 ```
 
+## テスト
+
+```bash
+bun run test
+bun run test:e2e
+```
+
+Playwright のブラウザが未インストールの場合は、初回のみ `bunx playwright install` を実行してください。詳しくは [docs/testing.md](./docs/testing.md) を参照してください。
+
 ## ドキュメント
 
-詳細な設計、データモデル、機能仕様は [docs/README.md](./docs/README.md) を参照してください。
+詳細な設計、データモデル、機能仕様、テスト方針は [docs/README.md](./docs/README.md) を参照してください。
 
 ## ライセンス
 

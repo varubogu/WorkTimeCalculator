@@ -43,7 +43,16 @@ export default function MonthCalendar({ year, month, data, t, showHolidayTint = 
         if ((c.kind === "off" || c.kind === "holi") && !c.entry.start) cls.push("off");
 
         return (
-          <div key={c.key} className={cls.join(" ")} onClick={() => onDayClick?.(c)}>
+          <div key={c.key} className={cls.join(" ")}
+            role="button" tabIndex={0}
+            aria-label={`${c.dateStr} ${t.addEntry}`}
+            onClick={() => onDayClick?.(c)}
+            onKeyDown={e => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onDayClick?.(c);
+              }
+            }}>
             <div className="num">{c.d}</div>
             {c.hrs > 0 && <div className="hrs">{fmtH(c.hrs)}</div>}
             <div className="mini-icons">

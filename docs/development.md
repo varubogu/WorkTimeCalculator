@@ -17,6 +17,8 @@ bun install
 |----------|------|
 | `bun dev` | Vite の開発サーバー（HMR 付き）。通常はこれで開発する |
 | `bun run build` | TypeScript 型チェック → `dist/` にビルド |
+| `bun run test` | Vitest の単体・コンポーネントテストを実行 |
+| `bun run test:e2e` | Playwright の E2E テストを実行 |
 | `bun run preview` | ビルド済み `dist/` を Vite の preview で確認 |
 | `bun start` | Bun 本番サーバー（`server.ts`）を起動し `dist/` を配信 |
 
@@ -30,10 +32,14 @@ PORT=8080 bun start
 
 1. `bun dev` で開発サーバーを起動（Vite の HMR で即時反映）。
 2. 機能を実装・修正。
-3. `bun run build` で型チェックとビルドが通るか確認。
-4. 必要に応じ `bun start` で本番配信の挙動を確認。
+3. `bun run test` で単体・コンポーネントテストが通るか確認。
+4. 主要導線を変更した場合は `bun run test:e2e` で E2E テストを確認。
+5. `bun run build` で型チェックとビルドが通るか確認。
+6. 必要に応じ `bun start` で本番配信の挙動を確認。
 
 > TypeScript の型チェックは `bun run build` のタイミングで走ります（`tsc --noEmit`）。ビルド前に手動で確認したい場合は `bunx tsc -p tsconfig.app.json --noEmit` を実行。
+
+テストの詳しい実行方法と追加方針は [testing.md](./testing.md) を参照してください。
 
 ## 設定ファイル
 
