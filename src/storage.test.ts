@@ -44,6 +44,7 @@ describe("storage helpers", () => {
       dayHours: -1,
       dayStart: "25:00",
       timeStepMin: 999,
+      monthOvertimeTargetMin: 0,
       breakMin: 30,
       showHolidays: false,
     });
@@ -51,14 +52,16 @@ describe("storage helpers", () => {
     expect(merged.dayHours).toBe(defaultSettings().dayHours);
     expect(merged.dayStart).toBe(defaultSettings().dayStart);
     expect(merged.timeStepMin).toBe(defaultSettings().timeStepMin);
+    expect(merged.hourDisplay).toBe(defaultSettings().hourDisplay);
+    expect(merged.monthOvertimeTargetMin).toBe(0);
     expect(merged.breakMin).toBe(30);
     expect(merged.showHolidays).toBe(false);
   });
 
   it("設定を保存してマージ済み設定として読み込む", () => {
-    const settings: Settings = { ...defaultSettings(), lang: "en", dark: true };
+    const settings: Settings = { ...defaultSettings(), lang: "en", dark: true, hourDisplay: "decimal" };
     saveSettings(settings);
 
-    expect(loadSettings()).toMatchObject({ lang: "en", dark: true });
+    expect(loadSettings()).toMatchObject({ lang: "en", dark: true, hourDisplay: "decimal" });
   });
 });

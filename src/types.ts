@@ -29,15 +29,22 @@ export interface Settings {
   dayHours: number;
   dayStart: string;
   timeStepMin: number;
+  hourDisplay: HourDisplay;
   monthTargetMin: number;
   monthTargetMax: number;
+  monthOvertimeTargetMin: number;
+  monthOvertimeTargetMax: number;
   yearTargetMin: number;
   yearTargetMax: number;
+  yearOvertimeTargetMin: number;
+  yearOvertimeTargetMax: number;
   breakMin: number;
   showHolidays: boolean;
   lang: Lang;
   dark: boolean;
 }
+
+export type HourDisplay = "clock" | "decimal";
 
 export type Lang = "ja" | "en";
 
@@ -78,10 +85,24 @@ export interface Translations {
   regHoursPerDay: string;
   regularStartTime: string;
   timeStep: string;
+  hourDisplay: string;
+  hourDisplayClock: string;
+  hourDisplayDecimal: string;
   monthTargetMin: string;
   monthTargetMax: string;
+  monthOvertimeTarget: string;
+  monthOvertimeTargetMin: string;
+  monthOvertimeTargetMax: string;
   yearTargetMin: string;
   yearTargetMax: string;
+  yearOvertimeTarget: string;
+  yearOvertimeTargetMin: string;
+  yearOvertimeTargetMax: string;
+  targetValue: string;
+  limitValue: string;
+  withinTarget: string;
+  withinLimit: string;
+  limitExceeded: string;
   defaultBreak: string;
   autoHoliday: string;
   startTime: string;

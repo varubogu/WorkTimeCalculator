@@ -22,15 +22,15 @@ function makeDay(overrides: Partial<DayData> = {}): DayData {
 
 describe("MonthCalendar", () => {
   it("勤務時間とアクセシブルな日付セルを表示する", () => {
-    render(<MonthCalendar year={2026} month={3} data={[makeDay()]} t={I18N.ja} />);
+    render(<MonthCalendar year={2026} month={3} data={[makeDay()]} hourDisplay="clock" t={I18N.ja} />);
 
     expect(screen.getByRole("button", { name: "2026-04-01 記録を追加" })).toBeInTheDocument();
-    expect(screen.getByText("8h")).toBeInTheDocument();
+    expect(screen.getByText("8:00")).toBeInTheDocument();
   });
 
   it("日付セルのクリックを通知する", () => {
     const onDayClick = vi.fn();
-    render(<MonthCalendar year={2026} month={3} data={[makeDay()]} t={I18N.ja} onDayClick={onDayClick} />);
+    render(<MonthCalendar year={2026} month={3} data={[makeDay()]} hourDisplay="clock" t={I18N.ja} onDayClick={onDayClick} />);
 
     screen.getByRole("button", { name: "2026-04-01 記録を追加" }).click();
 

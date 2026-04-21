@@ -7,9 +7,9 @@
   --ink-2: #5f6b7a;
   --ink-3: #8b96a8;
   --ruled: #d8dee9;
-  --accent-ok: #21835b;
-  --accent-warn: #b76e00;
-  --accent-bad: #c2413a;
+  --accent-ok: #3db985;
+  --accent-warn: #eeab22;
+  --accent-bad: #f06d64;
   --accent-sel: #2563eb;
   --accent-holi: #db2777;
   --shadow: 0 16px 40px rgba(23, 32, 51, 0.08);
@@ -113,9 +113,9 @@ h3 { font-size: 18px; line-height: 1.2; }
   display: flex;
 }
 
-.progress .zone-under { background: rgba(183, 110, 0, 0.12); }
-.progress .zone-ok { background: rgba(33, 131, 91, 0.18); }
-.progress .zone-over { background: rgba(194, 65, 58, 0.12); }
+.progress .zone-under { background: var(--accent-warn); }
+.progress .zone-ok { background: var(--accent-ok); }
+.progress .zone-over { background: var(--accent-bad); }
 
 .progress .marker {
   position: absolute;
@@ -604,6 +604,9 @@ body.dark {
   --ink-2: #c3c3cc;
   --ink-3: #8d8d99;
   --ruled: #3d3d45;
+  --accent-ok: #21835b;
+  --accent-warn: #b76e00;
+  --accent-bad: #c2413a;
   --shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
   --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.24);
 }

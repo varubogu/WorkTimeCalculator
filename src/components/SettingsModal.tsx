@@ -40,6 +40,21 @@ export default function SettingsModal({ settings, t, onSave, onClose }: Props) {
       onChange={e => setS(p => ({ ...p, [key]: e.target.value }))}
     />
   );
+  const hourDisplayInput = (
+    <select
+      value={s.hourDisplay}
+      style={{
+        width: 140, textAlign: "left",
+        fontFamily: "JetBrains Mono,monospace", fontSize: 12,
+        border: "1.5px solid var(--ink)", background: "var(--paper)",
+        padding: "3px 7px", borderRadius: 4, outline: "none", color: "var(--ink)",
+      }}
+      onChange={e => setS(p => ({ ...p, hourDisplay: e.target.value as Settings["hourDisplay"] }))}
+    >
+      <option value="clock">{t.hourDisplayClock}</option>
+      <option value="decimal">{t.hourDisplayDecimal}</option>
+    </select>
+  );
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -55,6 +70,7 @@ export default function SettingsModal({ settings, t, onSave, onClose }: Props) {
           <div className="settings-row"><label>{t.regularStartTime}</label>{timeInput("dayStart")}</div>
           <div className="settings-row"><label>{t.timeStep} (min)</label>{numInput("timeStepMin", 1, 120)}</div>
           <div className="settings-row"><label>{t.defaultBreak} (min)</label>{numInput("breakMin", 0, 480)}</div>
+          <div className="settings-row"><label>{t.hourDisplay}</label>{hourDisplayInput}</div>
         </div>
 
         <div className="sketch-divider" />
@@ -63,6 +79,8 @@ export default function SettingsModal({ settings, t, onSave, onClose }: Props) {
           <div className="settings-section-title">Monthly target</div>
           <div className="settings-row"><label>{t.monthTargetMin} (h)</label>{numInput("monthTargetMin", 0, 400)}</div>
           <div className="settings-row"><label>{t.monthTargetMax} (h)</label>{numInput("monthTargetMax", 0, 400)}</div>
+          <div className="settings-row"><label>{t.monthOvertimeTargetMin} (h)</label>{numInput("monthOvertimeTargetMin", 0, 200)}</div>
+          <div className="settings-row"><label>{t.monthOvertimeTargetMax} (h)</label>{numInput("monthOvertimeTargetMax", 0, 200)}</div>
         </div>
 
         <div className="sketch-divider" />
@@ -71,6 +89,8 @@ export default function SettingsModal({ settings, t, onSave, onClose }: Props) {
           <div className="settings-section-title">Yearly target</div>
           <div className="settings-row"><label>{t.yearTargetMin} (h)</label>{numInput("yearTargetMin", 0, 5000)}</div>
           <div className="settings-row"><label>{t.yearTargetMax} (h)</label>{numInput("yearTargetMax", 0, 5000)}</div>
+          <div className="settings-row"><label>{t.yearOvertimeTargetMin} (h)</label>{numInput("yearOvertimeTargetMin", 0, 2000)}</div>
+          <div className="settings-row"><label>{t.yearOvertimeTargetMax} (h)</label>{numInput("yearOvertimeTargetMax", 0, 2000)}</div>
         </div>
 
         <div className="sketch-divider" />

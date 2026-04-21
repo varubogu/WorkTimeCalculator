@@ -125,6 +125,7 @@ SVG で描画する年間の月別折れ線。目標バンド、Y軸目盛、現
 [src/components/RangeProgress.tsx](../src/components/RangeProgress.tsx)
 
 3 ゾーン（不足 / 範囲内 / 超過）の背景と、実績位置のマーカーを持つプログレスバー。
+背景色はサイドバーの月ドットと同じアクセント色（warn / ok / bad）をそのまま使い、ライト / ダークでテーマ別の色定義に追従する。
 
 **Props**
 

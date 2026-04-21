@@ -8,6 +8,7 @@ interface Props {
   year: number;
   month: number;
   data: DayData[];
+  hourDisplay: "clock" | "decimal";
   t: Translations;
   showHolidayTint?: boolean;
   onDayClick?: (day: DayData) => void;
@@ -17,7 +18,7 @@ function isPlaceholder(c: Cell): c is Placeholder {
   return (c as Placeholder).placeholder === true;
 }
 
-export default function MonthCalendar({ year, month, data, t, showHolidayTint = true, onDayClick }: Props) {
+export default function MonthCalendar({ year, month, data, hourDisplay, t, showHolidayTint = true, onDayClick }: Props) {
   const firstDOW = new Date(year, month, 1).getDay();
 
   const cells: Cell[] = [
@@ -54,7 +55,7 @@ export default function MonthCalendar({ year, month, data, t, showHolidayTint = 
               }
             }}>
             <div className="num">{c.d}</div>
-            {c.hrs > 0 && <div className="hrs">{fmtH(c.hrs)}</div>}
+            {c.hrs > 0 && <div className="hrs">{fmtH(c.hrs, hourDisplay)}</div>}
             <div className="mini-icons">
               {c.kind === "ot"   && <span className="icon-chip ot" />}
               {c.kind === "vac"  && <span className="icon-chip vac" />}

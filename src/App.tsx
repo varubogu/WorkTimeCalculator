@@ -3,7 +3,18 @@ import type { DayData, Entry, Lang, MonthData, Settings } from "./types";
 import I18N from "./i18n";
 import { loadSettings, mergeSettings, saveSettings, saveEntry } from "./storage";
 import { loadHolidayDates } from "./holidays";
-import { addMinutesToTime, buildMonthsData, sumHours, exportCSV, exportJSON } from "./utils";
+import {
+  addMinutesToTime,
+  buildMonthsData,
+  exportCSV,
+  exportJSON,
+  fmtH,
+  fmtHoursWithSign,
+  fmtRange,
+  sumHours,
+  sumKindHours,
+  sumOvertimeHours,
+} from "./utils";
 
 import AppHeader       from "./components/AppHeader";
 import Sidebar         from "./components/Sidebar";
@@ -65,7 +76,7 @@ function MobileMonthGrid({
                 background: statusColor(tot),
               }} />
             </div>
-            <div className="mono" style={{ fontSize: 10 }}>{tot}h</div>
+            <div className="mono" style={{ fontSize: 10 }}>{fmtH(tot, settings.hourDisplay)}</div>
           </div>
         );
       })}
@@ -120,7 +131,9 @@ export default function App() {
 
   const currentMonthData = monthsData[monthIdx].data;
   const currentTotal     = sumHours(currentMonthData);
+  const currentOvertimeTotal = sumOvertimeHours(currentMonthData, settings.dayHours);
   const yearTotal        = monthsData.reduce((s, m) => s + sumHours(m.data), 0);
+  const yearOvertimeTotal = monthsData.reduce((s, m) => s + sumOvertimeHours(m.data, settings.dayHours), 0);
 
   const handleSaveSettings = (newS: Settings) => {
     const merged = mergeSettings(newS);
@@ -186,18 +199,44 @@ export default function App() {
       <div className="row between mb-8" style={{ alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
           <h2 style={{ fontSize: 28 }}>{t.months[monthIdx]} {year}</h2>
-          <span className="mono muted small">{t.monthTarget}: {settings.monthTargetMin}–{settings.monthTargetMax}h</span>
+          <span className="mono muted small">{t.monthTarget}: {fmtRange(settings.monthTargetMin, settings.monthTargetMax, settings.hourDisplay)}</span>
         </div>
         <div className="row gap-8" style={{ alignItems: "center" }}>
           <button className="btn sm" onClick={handleFillRegularHours}>{t.bulkRegularFill}</button>
-          <span className="caveat" aria-label={t.totalHours} style={{ fontSize: 22 }}>{currentTotal}h</span>
-          <DeltaChip value={currentTotal} min={settings.monthTargetMin} max={settings.monthTargetMax} t={t} />
+          <span className="caveat" aria-label={t.totalHours} style={{ fontSize: 22 }}>{fmtH(currentTotal, settings.hourDisplay)}</span>
+          <DeltaChip value={currentTotal} min={settings.monthTargetMin} max={settings.monthTargetMax}
+            hourDisplay={settings.hourDisplay} t={t} />
         </div>
       </div>
       <RangeProgress min={settings.monthTargetMin} max={settings.monthTargetMax}
         value={currentTotal} hardMax={settings.monthTargetMax * 1.4} height={18} />
+      <div className="sketch-box tight mt-12" style={{ padding: 10 }}>
+        <div className="row between" style={{ alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <span className="mono muted small">
+              {t.targetValue}: {fmtH(settings.monthOvertimeTargetMin, settings.hourDisplay)} / {t.limitValue}: {fmtH(settings.monthOvertimeTargetMax, settings.hourDisplay)}
+            </span>
+          </div>
+          <div className="row gap-8" style={{ alignItems: "center" }}>
+            <span className="caveat" aria-label={t.overtime} style={{ fontSize: 20 }}>{fmtH(currentOvertimeTotal, settings.hourDisplay)}</span>
+            <DeltaChip value={currentOvertimeTotal} min={settings.monthOvertimeTargetMin} max={settings.monthOvertimeTargetMax}
+              hourDisplay={settings.hourDisplay} t={t} mode="ceiling" />
+          </div>
+        </div>
+        <div className="mt-8">
+          <RangeProgress
+            min={settings.monthOvertimeTargetMin}
+            max={settings.monthOvertimeTargetMax}
+            value={currentOvertimeTotal}
+            hardMax={Math.max(settings.monthOvertimeTargetMax * 1.4, currentOvertimeTotal * 1.1, settings.monthOvertimeTargetMax + 10, 10)}
+            height={14}
+            mode="ceiling"
+          />
+        </div>
+      </div>
       <div className="mt-12">
         <MonthCalendar year={year} month={monthIdx} data={currentMonthData}
+          hourDisplay={settings.hourDisplay}
           t={t} showHolidayTint={settings.showHolidays} onDayClick={handleDayClick} />
       </div>
       <div className="row between mt-12" style={{ flexWrap: "wrap", gap: 8 }}>
@@ -213,34 +252,64 @@ export default function App() {
       <div className="row between mb-8" style={{ alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
           <h2 style={{ fontSize: 28 }}>{year} · {t.year} {t.progress}</h2>
-          <span className="mono muted small">{t.yearTarget}: {settings.yearTargetMin}–{settings.yearTargetMax}h</span>
+          <span className="mono muted small">{t.yearTarget}: {fmtRange(settings.yearTargetMin, settings.yearTargetMax, settings.hourDisplay)}</span>
         </div>
         <div className="row gap-8" style={{ alignItems: "center" }}>
-          <span className="caveat" style={{ fontSize: 22 }}>{yearTotal}h</span>
-          <DeltaChip value={yearTotal} min={settings.yearTargetMin} max={settings.yearTargetMax} t={t} />
+          <span className="caveat" style={{ fontSize: 22 }}>{fmtH(yearTotal, settings.hourDisplay)}</span>
+          <DeltaChip value={yearTotal} min={settings.yearTargetMin} max={settings.yearTargetMax}
+            hourDisplay={settings.hourDisplay} t={t} />
         </div>
       </div>
       <div className="sketch-box tight" style={{ padding: "10px 8px 6px" }}>
         <YearTimelineChart
           monthsData={monthsData} year={year}
           targetMin={settings.monthTargetMin} targetMax={settings.monthTargetMax}
+          hourDisplay={settings.hourDisplay}
           currentMonthIdx={monthIdx} onPickMonth={setMonthIdx}
           height={280} t={t}
+        />
+      </div>
+      <div className="row between mt-12 mb-8" style={{ alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+          <h3 style={{ fontSize: 22 }}>{year} · {t.overtime} {t.progress}</h3>
+          <span className="mono muted small">
+            {t.targetValue}: {fmtH(settings.yearOvertimeTargetMin, settings.hourDisplay)} / {t.limitValue}: {fmtH(settings.yearOvertimeTargetMax, settings.hourDisplay)}
+          </span>
+        </div>
+        <div className="row gap-8" style={{ alignItems: "center" }}>
+          <span className="caveat" style={{ fontSize: 20 }}>{fmtH(yearOvertimeTotal, settings.hourDisplay)}</span>
+          <DeltaChip value={yearOvertimeTotal} min={settings.yearOvertimeTargetMin} max={settings.yearOvertimeTargetMax}
+            hourDisplay={settings.hourDisplay} t={t} mode="ceiling" />
+        </div>
+      </div>
+      <div className="sketch-box tight" style={{ padding: "10px 8px 6px" }}>
+        <YearTimelineChart
+          monthsData={monthsData} year={year}
+          targetMin={settings.monthOvertimeTargetMin} targetMax={settings.monthOvertimeTargetMax}
+          hourDisplay={settings.hourDisplay}
+          currentMonthIdx={monthIdx} onPickMonth={setMonthIdx}
+          height={240} t={t}
+          mode="overtime"
+          regularDayHours={settings.dayHours}
         />
       </div>
       <div className="mt-12" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
         {[
           {
             label: t.regular,
-            val: Math.round(monthsData.reduce((s, m) => s + m.data.filter(d => d.kind === "reg").reduce((a, d) => a + d.hrs, 0), 0) * 10) / 10 + "h",
+            val: fmtH(monthsData.reduce((s, m) => s + sumKindHours(m.data, "reg"), 0), settings.hourDisplay),
           },
           {
             label: t.overtime,
-            val: "+" + Math.round(monthsData.reduce((s, m) => s + m.data.filter(d => d.kind === "ot").reduce((a, d) => a + Math.max(0, d.hrs - settings.dayHours), 0), 0) * 10) / 10 + "h",
+            val: fmtHoursWithSign(
+              yearOvertimeTotal,
+              settings.hourDisplay,
+              "+",
+            ),
           },
           {
             label: t.weekendWork,
-            val: Math.round(monthsData.reduce((s, m) => s + m.data.filter(d => d.kind === "wknd").reduce((a, d) => a + d.hrs, 0), 0) * 10) / 10 + "h",
+            val: fmtH(monthsData.reduce((s, m) => s + sumKindHours(m.data, "wknd"), 0), settings.hourDisplay),
           },
           {
             label: t.vacation,

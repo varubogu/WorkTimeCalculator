@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addMinutesToTime, fmtH, netMinutes, timeToMinutes } from "./utils";
+import { addMinutesToTime, fmtH, netMinutes, overtimeHoursForDay, timeToMinutes } from "./utils";
+import type { DayData } from "./types";
 
 describe("time utilities", () => {
   it("HH:MM を分に変換する", () => {
@@ -29,8 +30,38 @@ describe("time utilities", () => {
   });
 
   it("小数時間を表示用文字列にする", () => {
-    expect(fmtH(8)).toBe("8h");
-    expect(fmtH(7.5)).toBe("7h30");
+    expect(fmtH(8)).toBe("8:00");
+    expect(fmtH(7.5)).toBe("7:30");
+    expect(fmtH(7.5, "decimal")).toBe("7.50h");
     expect(fmtH(null)).toBe("—");
+  });
+
+  it("残業時間は平日の超過分と休日勤務を集計する", () => {
+    const weekday: DayData = {
+      d: 1,
+      date: new Date("2026-04-01"),
+      dow: 3,
+      kind: "ot",
+      hrs: 9.5,
+      isHoliday: false,
+      isWorking: true,
+      isToday: false,
+      dateStr: "2026-04-01",
+      entry: { start: "09:00", end: "19:30", brk: 60, vac: false },
+    };
+    const weekend: DayData = {
+      ...weekday,
+      d: 4,
+      date: new Date("2026-04-04"),
+      dow: 6,
+      kind: "wknd",
+      hrs: 6,
+      isWorking: false,
+      dateStr: "2026-04-04",
+      entry: { start: "10:00", end: "17:00", brk: 60, vac: false },
+    };
+
+    expect(overtimeHoursForDay(weekday, 8)).toBe(1.5);
+    expect(overtimeHoursForDay(weekend, 8)).toBe(6);
   });
 });

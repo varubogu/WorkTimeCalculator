@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { MonthData, Translations } from "../types";
-import { sumHours } from "../utils";
+import type { HourDisplay, MonthData, Translations } from "../types";
+import { fmtH, fmtHoursWithSign, fmtRange, sumHours, sumOvertimeHours } from "../utils";
 
 interface Point {
   i: number;
@@ -15,15 +15,20 @@ interface Props {
   year: number;
   targetMin: number;
   targetMax: number;
+  hourDisplay: HourDisplay;
   currentMonthIdx: number;
   onPickMonth: (m: number) => void;
   height?: number;
   t: Translations;
+  mode?: "total" | "overtime";
+  regularDayHours?: number;
 }
 
 export default function YearTimelineChart({
-  monthsData, year, targetMin, targetMax,
+  monthsData, year, targetMin, targetMax, hourDisplay,
   currentMonthIdx, onPickMonth, t,
+  mode = "total",
+  regularDayHours = 8,
   height = 260,
 }: Props) {
   const [hover, setHover] = useState<Point | null>(null);
@@ -43,8 +48,10 @@ export default function YearTimelineChart({
   const padL = 44, padR = 16, padT = 18, padB = 28;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
+  const valueOf = (monthData: MonthData) =>
+    mode === "overtime" ? sumOvertimeHours(monthData.data, regularDayHours) : sumHours(monthData.data);
 
-  const maxTot = Math.max(targetMax * 1.2, ...monthsData.map(m => sumHours(m.data)));
+  const maxTot = Math.max(targetMax * 1.2, ...monthsData.map(valueOf), 20);
   const maxY   = Math.ceil(maxTot / 20) * 20;
   const yTicks: number[] = [];
   for (let v = 0; v <= maxY; v += 40) yTicks.push(v);
@@ -53,13 +60,14 @@ export default function YearTimelineChart({
   const yAt = (hrs: number) => padT + innerH - (hrs / maxY) * innerH;
 
   const bandTop    = yAt(targetMax);
-  const bandBottom = yAt(targetMin);
+  const bandMiddle = yAt(targetMin);
+  const bandBottom = yAt(0);
 
   const points: Point[] = monthsData.map((m, i) => ({
     i, m: m.m,
-    tot: sumHours(m.data),
+    tot: valueOf(m),
     x: xAt(i),
-    y: yAt(sumHours(m.data)),
+    y: yAt(valueOf(m)),
   }));
 
   const toPath = (arr: Point[]) =>
@@ -78,8 +86,14 @@ export default function YearTimelineChart({
     setHover(best && bestD < innerW / 11 ? best : null);
   };
 
-  const statusOf = (tot: number) =>
-    tot < targetMin ? "under" : tot > targetMax ? "over" : "ok";
+  const statusOf = (tot: number) => {
+    if (mode === "overtime") {
+      if (tot <= targetMin) return "ok";
+      if (tot <= targetMax) return "warn";
+      return "over";
+    }
+    return tot < targetMin ? "under" : tot > targetMax ? "over" : "ok";
+  };
 
   return (
     <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
@@ -89,11 +103,40 @@ export default function YearTimelineChart({
         onMouseMove={onMove} onMouseLeave={() => setHover(null)}
       >
         {/* target band */}
-        <rect x={padL} y={bandTop} width={innerW} height={bandBottom - bandTop}
-          fill="rgba(107,142,90,0.18)" stroke="var(--accent-ok)"
-          strokeWidth="1.2" strokeDasharray="4 4" />
-        <text x={padL + 4} y={bandTop - 3}     fontSize="10" fill="var(--accent-ok)">{targetMax}h</text>
-        <text x={padL + 4} y={bandBottom + 12}  fontSize="10" fill="var(--accent-ok)">{targetMin}h</text>
+        {mode === "overtime" ? (
+          <>
+            <rect
+              x={padL}
+              y={bandMiddle}
+              width={innerW}
+              height={bandBottom - bandMiddle}
+              fill="rgba(107,142,90,0.18)"
+              stroke="var(--accent-ok)"
+              strokeWidth="1.2"
+              strokeDasharray="4 4"
+            />
+            <rect
+              x={padL}
+              y={bandTop}
+              width={innerW}
+              height={bandMiddle - bandTop}
+              fill="rgba(199,134,35,0.15)"
+              stroke="var(--accent-warn)"
+              strokeWidth="1.2"
+              strokeDasharray="4 4"
+            />
+            <text x={padL + 4} y={bandMiddle - 3} fontSize="10" fill="var(--accent-ok)">{fmtH(targetMin, hourDisplay)}</text>
+            <text x={padL + 4} y={bandTop - 3} fontSize="10" fill="var(--accent-warn)">{fmtH(targetMax, hourDisplay)}</text>
+          </>
+        ) : (
+          <>
+            <rect x={padL} y={bandTop} width={innerW} height={bandMiddle - bandTop}
+              fill="rgba(107,142,90,0.18)" stroke="var(--accent-ok)"
+              strokeWidth="1.2" strokeDasharray="4 4" />
+            <text x={padL + 4} y={bandTop - 3} fontSize="10" fill="var(--accent-ok)">{fmtH(targetMax, hourDisplay)}</text>
+            <text x={padL + 4} y={bandMiddle + 12} fontSize="10" fill="var(--accent-ok)">{fmtH(targetMin, hourDisplay)}</text>
+          </>
+        )}
 
         {/* Y axis */}
         {yTicks.map(v => (
@@ -137,7 +180,7 @@ export default function YearTimelineChart({
               <circle cx={p.x} cy={p.y} r={big ? 7 : 5} fill={fill} stroke={fill} strokeWidth="2" />
               {big && (
                 <text x={p.x} y={p.y - 11} fontSize="10" textAnchor="middle" fill="var(--ink)">
-                  {p.tot}h
+                  {fmtH(p.tot, hourDisplay)}
                 </text>
               )}
               <rect x={p.x - innerW / 22} y={padT} width={innerW / 11} height={innerH} fill="transparent" />
@@ -149,11 +192,13 @@ export default function YearTimelineChart({
       {/* Tooltip */}
       {hover && (() => {
         const mData = monthsData[hover.i].data;
-        const ot  = mData.filter(d => d.kind === "ot").reduce((s, d) => s + d.hrs, 0);
+        const ot  = sumOvertimeHours(mData, regularDayHours);
         const vac = mData.filter(d => d.kind === "vac").length;
         const st  = statusOf(hover.tot);
         const stColor = st === "ok" ? "var(--accent-ok)" : st === "over" ? "var(--accent-bad)" : "var(--accent-warn)";
-        const stLabel = st === "ok" ? t.inRange : st === "over" ? t.excess : t.shortage;
+        const stLabel = mode === "overtime"
+          ? (st === "ok" ? t.withinTarget : st === "over" ? t.limitExceeded : t.withinLimit)
+          : (st === "ok" ? t.inRange : st === "over" ? t.excess : t.shortage);
         const left = Math.min(W - 185, Math.max(4, hover.x + 10));
         const top  = Math.max(4, hover.y - 80);
         return (
@@ -170,12 +215,12 @@ export default function YearTimelineChart({
             </div>
             <div className="mono" style={{ fontSize: 10, color: "var(--ink-2)", marginTop: 2 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>{t.totalHours}</span>
-                <span style={{ color: "var(--ink)", fontWeight: 600 }}>{hover.tot}h</span>
+                <span>{mode === "overtime" ? t.overtime : t.totalHours}</span>
+                <span style={{ color: "var(--ink)", fontWeight: 600 }}>{fmtH(hover.tot, hourDisplay)}</span>
               </div>
-              {ot > 0 && (
+              {mode === "total" && ot > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>{t.overtime}</span><span>+{Math.round(ot * 10) / 10}h</span>
+                  <span>{t.overtime}</span><span>{fmtHoursWithSign(Math.round(ot * 10) / 10, hourDisplay, "+")}</span>
                 </div>
               )}
               {vac > 0 && (
@@ -184,8 +229,14 @@ export default function YearTimelineChart({
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>{t.target}</span><span>{targetMin}–{targetMax}h</span>
+                <span>{mode === "overtime" ? t.targetValue : t.target}</span>
+                <span>{mode === "overtime" ? fmtH(targetMin, hourDisplay) : fmtRange(targetMin, targetMax, hourDisplay)}</span>
               </div>
+              {mode === "overtime" && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>{t.limitValue}</span><span>{fmtH(targetMax, hourDisplay)}</span>
+                </div>
+              )}
             </div>
             <div className="mono" style={{ fontSize: 9, color: "var(--ink-3)", marginTop: 3 }}>
               {t.click} →
@@ -198,11 +249,21 @@ export default function YearTimelineChart({
       <div className="legend" style={{ marginTop: 6 }}>
         <span>
           <span style={{ display: "inline-block", width: 22, height: 2, background: "var(--ink)" }} />
-          {t.actualHours}
+          {mode === "overtime" ? t.overtime : t.actualHours}
         </span>
-        <span><span className="icon-chip" style={{ background: "var(--accent-ok)" }} /> {t.inRange}</span>
-        <span><span className="icon-chip" style={{ background: "var(--accent-bad)" }} /> {t.excess}</span>
-        <span><span className="icon-chip" style={{ background: "var(--accent-warn)" }} /> {t.shortage}</span>
+        {mode === "overtime" ? (
+          <>
+            <span><span className="icon-chip" style={{ background: "var(--accent-ok)" }} /> {t.withinTarget}</span>
+            <span><span className="icon-chip" style={{ background: "var(--accent-warn)" }} /> {t.withinLimit}</span>
+            <span><span className="icon-chip" style={{ background: "var(--accent-bad)" }} /> {t.limitExceeded}</span>
+          </>
+        ) : (
+          <>
+            <span><span className="icon-chip" style={{ background: "var(--accent-ok)" }} /> {t.inRange}</span>
+            <span><span className="icon-chip" style={{ background: "var(--accent-bad)" }} /> {t.excess}</span>
+            <span><span className="icon-chip" style={{ background: "var(--accent-warn)" }} /> {t.shortage}</span>
+          </>
+        )}
       </div>
     </div>
   );

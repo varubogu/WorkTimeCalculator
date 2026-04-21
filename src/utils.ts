@@ -1,6 +1,10 @@
-import type { DayData, MonthData, Settings } from "./types";
+import type { DayData, HourDisplay, MonthData, Settings } from "./types";
 import JP_HOLIDAYS from "./holidays";
 import { isoDate, loadEntry } from "./storage";
+
+function roundHours(hours: number): number {
+  return Math.round(hours * 10) / 10;
+}
 
 export function timeToMinutes(t: string): number | null {
   if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return null;
@@ -25,11 +29,33 @@ export function addMinutesToTime(start: string, minutes: number): string | null 
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-export function fmtH(fractionalHours: number | null | undefined): string {
+export function fmtH(fractionalHours: number | null | undefined, mode: HourDisplay = "clock"): string {
   if (fractionalHours == null) return "—";
-  const h = Math.floor(fractionalHours);
-  const m = Math.round((fractionalHours - h) * 60);
-  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
+  if (mode === "decimal") return `${fractionalHours.toFixed(2)}h`;
+
+  const totalMinutes = Math.round(fractionalHours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+
+export function fmtRange(min: number, max: number, mode: HourDisplay = "clock"): string {
+  return `${fmtH(min, mode)}-${fmtH(max, mode)}`;
+}
+
+export function fmtHoursWithSign(
+  fractionalHours: number | null | undefined,
+  mode: HourDisplay = "clock",
+  sign: "" | "+" | "-" = "",
+): string {
+  if (fractionalHours == null) return "—";
+  if (mode === "decimal") return `${sign}${fractionalHours.toFixed(2)}h`;
+
+  const totalMinutes = Math.round(fractionalHours * 60);
+  const absMinutes = Math.abs(totalMinutes);
+  const h = Math.floor(absMinutes / 60);
+  const m = absMinutes % 60;
+  return `${sign}${h}:${String(m).padStart(2, "0")}`;
 }
 
 export function getRealMonthData(
@@ -83,7 +109,21 @@ export function getRealMonthData(
 }
 
 export function sumHours(data: DayData[]): number {
-  return Math.round(data.reduce((s, d) => s + (d.hrs || 0), 0) * 10) / 10;
+  return roundHours(data.reduce((s, d) => s + (d.hrs || 0), 0));
+}
+
+export function overtimeHoursForDay(day: DayData, regularDayHours: number): number {
+  if (day.entry.vac || day.hrs <= 0) return 0;
+  if (!day.isWorking || day.isHoliday) return roundHours(day.hrs);
+  return roundHours(Math.max(0, day.hrs - regularDayHours));
+}
+
+export function sumOvertimeHours(data: DayData[], regularDayHours: number): number {
+  return roundHours(data.reduce((sum, day) => sum + overtimeHoursForDay(day, regularDayHours), 0));
+}
+
+export function sumKindHours(data: DayData[], kind: DayData["kind"]): number {
+  return roundHours(data.reduce((sum, day) => sum + (day.kind === kind ? day.hrs : 0), 0));
 }
 
 export function buildMonthsData(

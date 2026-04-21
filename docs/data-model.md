@@ -36,8 +36,12 @@ interface Settings {
   timeStepMin:    number;  // 時刻入力の刻み（分）
   monthTargetMin: number;  // 月目標 下限（時間）
   monthTargetMax: number;  // 月目標 上限
+  monthOvertimeTargetMin: number; // 月残業目標 下限
+  monthOvertimeTargetMax: number; // 月残業目標 上限
   yearTargetMin:  number;  // 年目標 下限
   yearTargetMax:  number;  // 年目標 上限
+  yearOvertimeTargetMin: number;  // 年残業目標 下限
+  yearOvertimeTargetMax: number;  // 年残業目標 上限
   breakMin:       number;  // デフォルト休憩（分）
   showHolidays:   boolean; // 祝日自動反映
   lang:           Lang;    // "ja" | "en"
@@ -54,8 +58,12 @@ interface Settings {
 | `timeStepMin` | 15 |
 | `monthTargetMin` | 140 |
 | `monthTargetMax` | 180 |
+| `monthOvertimeTargetMin` | 0 |
+| `monthOvertimeTargetMax` | 45 |
 | `yearTargetMin` | 1680 |
 | `yearTargetMax` | 2160 |
+| `yearOvertimeTargetMin` | 0 |
+| `yearOvertimeTargetMax` | 360 |
 | `breakMin` | 60 |
 | `showHolidays` | `true` |
 | `lang` | `"ja"` |
@@ -135,6 +143,14 @@ interface MonthData {
 ### `sumHours(data: DayData[]): number`
 
 日配列の `hrs` 合計を小数 1 桁に丸めて返す（月合計・年合計に使用）。
+
+### `sumOvertimeHours(data: DayData[], regularDayHours: number): number`
+
+残業時間の合計を小数 1 桁で返します。
+
+- 平日は `max(0, hrs - regularDayHours)` を採用
+- 土日・祝日の勤務は `hrs` 全量を残業として採用
+- 休暇日は 0
 
 ## ストレージヘルパー
 

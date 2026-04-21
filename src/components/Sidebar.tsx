@@ -1,5 +1,5 @@
 import type { MonthData, Settings, Translations } from "../types";
-import { sumHours } from "../utils";
+import { fmtH, fmtRange, sumHours, sumOvertimeHours } from "../utils";
 import { exportCSV, exportJSON } from "../utils";
 import RangeProgress from "./RangeProgress";
 
@@ -22,12 +22,14 @@ function statusColor(st: string) {
 
 export default function Sidebar({ year, monthIdx, monthsData, settings, t, onPickMonth }: Props) {
   const yearTotal = monthsData.reduce((s, m) => s + sumHours(m.data), 0);
+  const yearOvertimeTotal = monthsData.reduce((s, m) => s + sumOvertimeHours(m.data, settings.dayHours), 0);
+  const yearOvertimeHardMax = Math.max(settings.yearOvertimeTargetMax * 1.3, yearOvertimeTotal * 1.1, settings.yearOvertimeTargetMax + 20, 20);
 
   return (
     <div className="sidebar">
       <div className="caveat" style={{ fontSize: 24, lineHeight: 1 }}>{year}</div>
       <div className="mono muted small mb-8">
-        {t.yearTarget} · {settings.yearTargetMin}–{settings.yearTargetMax}h
+        {t.yearTarget} · {fmtRange(settings.yearTargetMin, settings.yearTargetMax, settings.hourDisplay)}
       </div>
       <RangeProgress
         min={settings.yearTargetMin} max={settings.yearTargetMax}
@@ -35,7 +37,20 @@ export default function Sidebar({ year, monthIdx, monthsData, settings, t, onPic
       />
       <div className="row between mt-8 mono small muted">
         <span>{t.actualHours}</span>
-        <span style={{ color: "var(--ink)" }}>{yearTotal}h</span>
+        <span style={{ color: "var(--ink)" }}>{fmtH(yearTotal, settings.hourDisplay)}</span>
+      </div>
+      <div className="mono muted small mt-12">
+        {t.targetValue} · {fmtH(settings.yearOvertimeTargetMin, settings.hourDisplay)} / {t.limitValue} · {fmtH(settings.yearOvertimeTargetMax, settings.hourDisplay)}
+      </div>
+      <div className="mt-8">
+        <RangeProgress
+          min={settings.yearOvertimeTargetMin} max={settings.yearOvertimeTargetMax}
+          value={yearOvertimeTotal} hardMax={yearOvertimeHardMax} height={14} mode="ceiling"
+        />
+      </div>
+      <div className="row between mt-8 mono small muted">
+        <span>{t.overtime}</span>
+        <span style={{ color: "var(--ink)" }}>{fmtH(yearOvertimeTotal, settings.hourDisplay)}</span>
       </div>
       <div className="sketch-divider" />
       <div className="col gap-4">
@@ -52,7 +67,7 @@ export default function Sidebar({ year, monthIdx, monthsData, settings, t, onPic
                 <div className="dot-status" style={{ background: statusColor(st) }} />
                 <span className="caveat" style={{ fontSize: 18, whiteSpace: "nowrap" }}>{t.months[m]}</span>
               </div>
-              <span className="mono small muted" style={{ flexShrink: 0 }}>{tot}h</span>
+              <span className="mono small muted" style={{ flexShrink: 0 }}>{fmtH(tot, settings.hourDisplay)}</span>
             </div>
           );
         })}

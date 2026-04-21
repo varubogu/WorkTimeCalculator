@@ -24,7 +24,7 @@ export default function DayModal({ dayObj, year, month, settings, t, onSave, onC
   const net = (!entry.vac && entry.start && entry.end)
     ? netMinutes(entry.start, entry.end, entry.brk)
     : null;
-  const hrsStr = net !== null ? fmtH(net / 60) : null;
+  const hrsStr = net !== null ? fmtH(net / 60, settings.hourDisplay) : null;
   const timeStepSeconds = Math.max(1, Math.floor(settings.timeStepMin || 1)) * 60;
 
   return (
