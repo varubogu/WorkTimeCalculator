@@ -13,9 +13,14 @@ export interface DayData {
   dow: number;
   kind: DayKind;
   hrs: number;
+  regularDayHours: number;
+  defaultDayStart: string;
+  defaultBreakMin: number;
+  timeStepMin: number;
   isHoliday: boolean;
   isWorking: boolean;
   isToday: boolean;
+  hasMissingSettings: boolean;
   dateStr: string;
   entry: Entry;
 }
@@ -42,6 +47,38 @@ export interface Settings {
   showHolidays: boolean;
   lang: Lang;
   dark: boolean;
+}
+
+export interface SettingsPeriod {
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+  overrides: Partial<Pick<
+    Settings,
+    | "dayHours"
+    | "dayStart"
+    | "timeStepMin"
+    | "breakMin"
+    | "showHolidays"
+  >>;
+}
+
+export interface WorkEntriesFileEntry {
+  date: string;
+  start: string;
+  end: string;
+  breakMin: number;
+  vacation: boolean;
+}
+
+export interface WorkEntriesFile {
+  schema: "wtc-work-entries/v1";
+  entries: WorkEntriesFileEntry[];
+}
+
+export interface SettingsFile {
+  schema: "wtc-settings/v1";
+  baseSettings: Settings;
+  periods: SettingsPeriod[];
 }
 
 export type HourDisplay = "clock" | "decimal";
@@ -126,4 +163,25 @@ export interface Translations {
   bulkRegularFill: string;
   bulkRegularOverwriteConfirm: string;
   bulkRegularTimeOverflow: string;
+  workFile: string;
+  settingsFile: string;
+  exportWorkCsv: string;
+  exportWorkJson: string;
+  exportWorkYaml: string;
+  exportSettingsJson: string;
+  exportSettingsYaml: string;
+  importWorkFile: string;
+  importSettingsFile: string;
+  settingsPeriods: string;
+  settingsPeriodTarget: string;
+  settingsPeriodFrom: string;
+  settingsPeriodTo: string;
+  settingsPeriodNone: string;
+  addSettingsPeriod: string;
+  removeSettingsPeriod: string;
+  settingsPeriodHelp: string;
+  settingsPeriodMissing: string;
+  fileImportSuccess: string;
+  fileImportError: string;
+  fileValidationError: string;
 }

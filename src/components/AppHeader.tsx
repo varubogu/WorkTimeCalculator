@@ -1,4 +1,10 @@
 import type { Lang, Translations } from "../types";
+import DropdownActionButton from "./DropdownActionButton";
+
+interface MenuItem {
+  label: string;
+  onSelect: () => void;
+}
 
 interface Props {
   t: Translations;
@@ -7,9 +13,20 @@ interface Props {
   dark: boolean;
   onDark: () => void;
   onSettings: () => void;
+  importItems: MenuItem[];
+  exportItems: MenuItem[];
 }
 
-export default function AppHeader({ t, lang, onLang, dark, onDark, onSettings }: Props) {
+export default function AppHeader({
+  t,
+  lang,
+  onLang,
+  dark,
+  onDark,
+  onSettings,
+  importItems,
+  exportItems,
+}: Props) {
   return (
     <div className="app-header">
       <div className="brand">
@@ -30,6 +47,8 @@ export default function AppHeader({ t, lang, onLang, dark, onDark, onSettings }:
           <option value="ja">JA 日本語</option>
           <option value="en">EN English</option>
         </select>
+        <DropdownActionButton label={t.import} items={importItems} />
+        <DropdownActionButton label={t.export} items={exportItems} />
         <button className="btn sm" onClick={onDark}>{dark ? "☀" : "☾"}</button>
         <button className="btn sm" onClick={onSettings}>⚙ {t.settings}</button>
       </div>

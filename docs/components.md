@@ -190,17 +190,18 @@ SVG で描画する年間の月別折れ線。目標バンド、Y軸目盛、現
 
 [src/components/SettingsModal.tsx](../src/components/SettingsModal.tsx)
 
-設定ダイアログ。1日の定時時間、定時開始時刻、時刻入力の刻み、デフォルト休憩、月目標の最小/最大、年目標の最小/最大、祝日自動反映フラグ。
+設定ダイアログ。1日の定時時間、定時開始時刻、時刻入力の刻み、デフォルト休憩、月目標の最小/最大、年目標の最小/最大、祝日自動反映フラグに加え、有効期間付き設定を `開始日 ～ 終了日` のプルダウンで切り替えて編集する。初期状態では `null ～ null` 相当の空欄期間が 1 件あり、開始日を設定すると前半期間を残したまま新しい期間へ自動分割する。
 
 **Props**
 
 | 名前 | 型 | 説明 |
 |------|------|------|
 | `settings` | `Settings` | 現在の設定（初期値） |
+| `settingsPeriods` | `SettingsPeriod[]` | 現在の期間設定（初期値） |
 | `t` | `Translations` | i18n 辞書 |
-| `onSave` | `(s: Settings) => void` | 保存時 |
+| `onSave` | `(s: Settings, periods: SettingsPeriod[]) => void` | 保存時 |
 | `onClose` | `() => void` | 閉じる |
 
-内部でローカル `useState` により編集中の値を保持し、保存時に親へ渡す。
+内部でローカル `useState` により編集中の値を保持し、保存時に親へ渡す。期間設定はプルダウンで編集対象を切り替え、`＋` ボタンから開始日・終了日を入力して追加できる。編集対象が `null` 開始の期間で、開始日を初めて設定した場合は元期間を `null ～ 開始日` に残しつつ、新しい期間を `開始日 ～ 終了日` として追加する。
 
 `dayHours` は `7.5` のような小数入力に対応する。`dayStart` は `type="time"` の入力で編集し、定時一括入力時の開始時刻として利用される。終了時刻は `dayHours` と `breakMin` から [utils.ts](../src/utils.ts) の `addMinutesToTime` で計算するため、SettingsModal では保存しない。`timeStepMin` は設定画面と日次入力の時刻入力刻みに使う。

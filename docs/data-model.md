@@ -8,6 +8,7 @@
 |------|-----------|------|
 | `wtc_YYYY-MM-DD` | `Entry` | 1 日分の勤務記録（例: `wtc_2026-04-19`） |
 | `wtc_settings` | `Settings` | アプリ設定 |
+| `wtc_settings_periods` | `SettingsPeriod[]` | 有効期間付き設定の上書きルール |
 | `wtc_holidays_YYYY` | `{ savedAt, dates }` | Holidays JP API から取得した祝日の日付キャッシュ |
 
 日付キーの生成は [storage.ts](../src/storage.ts) の `isoDate(year, month, day)`：月は 0 起点で受け取り、1 起点のゼロパディングで文字列化します。
@@ -49,6 +50,26 @@ interface Settings {
 }
 ```
 
+### `SettingsPeriod` — 有効期間付き設定
+
+```ts
+interface SettingsPeriod {
+  effectiveFrom: string | null; // null または "YYYY-MM-DD"
+  effectiveTo: string | null;   // null または "YYYY-MM-DD"
+  overrides: {
+    dayHours?: number;
+    dayStart?: string;
+    timeStepMin?: number;
+    breakMin?: number;
+    showHolidays?: boolean;
+  };
+}
+```
+
+`effectiveFrom` / `effectiveTo` は `null` を許容し、`null` は始端または終端が未指定であることを表します。初期状態では `null` 〜 `null` の期間が 1 件自動作成されます。開始日を設定すると、その期間は `null` 〜 新しい開始日 と 新しい開始日 〜 新しい終了日 に分割されます。
+
+期間内では `baseSettings` に対して `overrides` が上書き適用されます。現在の UI では、勤務計算に影響の大きい `dayHours` / `dayStart` / `timeStepMin` / `breakMin` を主対象として編集できます。いずれの期間にも属さない日付がある場合、カレンダー表示時に「設定が存在しない期間があります」と警告を出します。
+
 デフォルト値（`defaultSettings()`）:
 
 | キー | 値 |
@@ -80,6 +101,10 @@ interface DayData {
   dow:       number;     // 0(日)..6(土)
   kind:      DayKind;
   hrs:       number;     // 実働時間（小数）
+  regularDayHours: number;
+  defaultDayStart: string;
+  defaultBreakMin: number;
+  timeStepMin: number;
   isHoliday: boolean;
   isWorking: boolean;    // 月〜金なら true
   isToday:   boolean;
@@ -98,7 +123,7 @@ type DayKind = "reg" | "ot" | "off" | "vac" | "holi" | "wknd";
 4. 祝日 → `"holi"`
 5. 非平日 → `"off"`
 6. 実働なし → `"off"`
-7. `hrs > dayHours` → `"ot"`
+7. `hrs > regularDayHours` → `"ot"`
 8. それ以外 → `"reg"`
 
 ### `MonthData`
@@ -162,9 +187,15 @@ interface MonthData {
 | `saveEntry(dateStr, entry)` | 指定日の `Entry` を保存 |
 | `clearEntry(dateStr)` | 指定日のエントリを削除 |
 | `loadSettings()` | 設定を読み、`mergeSettings` でデフォルトと合成 |
+| `loadSettingsPeriods()` | 有効期間付き設定を読み込む |
 | `saveSettings(s)` | 設定を保存 |
+| `saveSettingsPeriods(periods)` | 有効期間付き設定を保存 |
 | `defaultSettings()` | デフォルト設定を返す |
+| `ensureSettingsPeriods(base, periods)` | 期間が空なら `null` 〜 `null` の初期期間を補う |
 | `mergeSettings(partial)` | 部分的な設定をデフォルトと合成して完全な `Settings` にする |
+| `mergeSettingsPeriods(periods)` | 期間設定を正規化してソートする |
+| `resolveSettingsForDate(base, periods, dateStr)` | 指定日に有効な設定を返す。未設定なら `null` |
+| `findFirstMissingSettingsDate(periods, start, end)` | 範囲内で最初に未設定となる日付を返す |
 | `isoDate(y, m, d)` | `YYYY-MM-DD` を生成（月は 0 起点で受け取り） |
 
 いずれも `try/catch` で JSON パース失敗を吸収し、壊れたデータでアプリが落ちないようにしています。
@@ -177,32 +208,72 @@ interface MonthData {
 
 API 取得に失敗した場合は、同ファイル内の 2024–2027 の固定祝日セットへフォールバックします。フォールバック用データは年次で更新してください。
 
-## エクスポート
+## ファイル形式
+
+出典: [src/fileFormats.ts](../src/fileFormats.ts)
+
+### 作業時間ファイル
+
+JSON / YAML 共通構造:
+
+```json
+{
+  "schema": "wtc-work-entries/v1",
+  "entries": [
+    { "date": "2026-04-19", "start": "09:00", "end": "18:00", "breakMin": 60, "vacation": false }
+  ]
+}
+```
+
+CSV ヘッダ:
+
+```text
+date,start,end,breakMin,vacation
+```
+
+### 設定ファイル
+
+JSON / YAML 共通構造:
+
+```json
+{
+  "schema": "wtc-settings/v1",
+  "baseSettings": {
+    "dayHours": 8,
+    "dayStart": "09:00"
+  },
+  "periods": [
+    {
+      "effectiveFrom": null,
+      "effectiveTo": "2026-06-30",
+      "overrides": { "dayHours": 7.5, "dayStart": "08:30", "breakMin": 45 }
+    }
+  ]
+}
+```
+
+`src/fileFormats.ts` には JSON Schema 相当の定義（`WORK_ENTRIES_JSON_SCHEMA`, `SETTINGS_JSON_SCHEMA`）と、内容検証用のバリデータを置いています。インポート時はファイル拡張子ごとにパースし、構造検証に失敗した場合は取り込みません。
+
+## エクスポート / インポート
 
 ### CSV
 
 [utils.ts](../src/utils.ts) `exportCSV(monthsData, year)`
 
-列: `Date, Start, End, Break(min), Hours, Type`
+列: `date,start,end,breakMin,vacation`
 
-実働がある日、または休暇の日のみ出力。ファイル名: `workhours-{year}.csv`。
+入力済みの日のみ出力。ファイル名: `workhours-{year}.csv`。
 
 ### JSON
 
-[utils.ts](../src/utils.ts) `exportJSON(monthsData, year)`
+作業時間ファイルと設定ファイルの両方を出力できます。設定ファイルは `settings.json` / `settings.yaml` として保存されます。
 
-形式:
+### YAML
 
-```json
-{
-  "2026-04-19": { "start": "09:00", "end": "18:00", "brk": 60, "vac": false },
-  "2026-04-22": { "start": "", "end": "", "brk": 60, "vac": true }
-}
-```
-
-ファイル名: `workhours-{year}.json`。
+作業時間ファイルと設定ファイルの両方を YAML で出力できます。拡張子は `.yaml` です。
 
 ## データ移行・バックアップ
 
-- 現状「インポート」機能は未実装（エクスポートのみ）。
-- 端末・ブラウザを跨ぐ場合は JSON をエクスポートし、手動で localStorage を書き戻す必要があります。
+- 作業時間ファイルは CSV / JSON / YAML で読み込み可能です。
+- 設定ファイルは JSON / YAML で読み込み可能です。
+- インポート成功時は `localStorage` の内容を上書きします。

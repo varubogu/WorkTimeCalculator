@@ -1,6 +1,7 @@
-import type { DayData, HourDisplay, MonthData, Settings } from "./types";
+import type { DayData, HourDisplay, MonthData, Settings, SettingsPeriod } from "./types";
+import { createWorkEntriesFile, serializeWorkEntriesCsv, serializeWorkEntriesFile } from "./fileFormats";
 import JP_HOLIDAYS from "./holidays";
-import { isoDate, loadEntry } from "./storage";
+import { isoDate, loadEntry, resolveSettingsForDate } from "./storage";
 
 function roundHours(hours: number): number {
   return Math.round(hours * 10) / 10;
@@ -62,6 +63,7 @@ export function getRealMonthData(
   year: number,
   month: number,
   settings: Settings,
+  settingsPeriods: SettingsPeriod[],
   useHolidays: boolean,
   holidayDates: ReadonlySet<string> = JP_HOLIDAYS,
 ): DayData[] {
@@ -75,10 +77,13 @@ export function getRealMonthData(
     const date      = new Date(year, month, d);
     const dow       = date.getDay();
     const dateStr   = isoDate(year, month, d);
+    const settingsForDate = resolveSettingsForDate(settings, settingsPeriods, dateStr);
+    const resolvedSettings = settingsForDate ?? settings;
+    const hasMissingSettings = settingsForDate === null;
     const isWorking = [1, 2, 3, 4, 5].includes(dow);
     const isHoliday = holidays.has(dateStr);
     const isToday   = dateStr === todayStr;
-    const entry     = loadEntry(dateStr, settings.breakMin);
+    const entry     = loadEntry(dateStr, resolvedSettings.breakMin);
     const net       = (!entry.vac && entry.start && entry.end)
       ? netMinutes(entry.start, entry.end, entry.brk)
       : null;
@@ -97,13 +102,29 @@ export function getRealMonthData(
       kind = "off";
     } else if (hrs === 0) {
       kind = "off";
-    } else if (hrs > settings.dayHours) {
+    } else if (hrs > resolvedSettings.dayHours) {
       kind = "ot";
     } else {
       kind = "reg";
     }
 
-    out.push({ d, date, dow, kind, hrs, isHoliday, isWorking, isToday, dateStr, entry });
+    out.push({
+      d,
+      date,
+      dow,
+      kind,
+      hrs,
+      regularDayHours: resolvedSettings.dayHours,
+      defaultDayStart: resolvedSettings.dayStart,
+      defaultBreakMin: resolvedSettings.breakMin,
+      timeStepMin: resolvedSettings.timeStepMin,
+      isHoliday,
+      isWorking,
+      isToday,
+      hasMissingSettings,
+      dateStr,
+      entry,
+    });
   }
   return out;
 }
@@ -119,7 +140,7 @@ export function overtimeHoursForDay(day: DayData, regularDayHours: number): numb
 }
 
 export function sumOvertimeHours(data: DayData[], regularDayHours: number): number {
-  return roundHours(data.reduce((sum, day) => sum + overtimeHoursForDay(day, regularDayHours), 0));
+  return roundHours(data.reduce((sum, day) => sum + overtimeHoursForDay(day, day.regularDayHours ?? regularDayHours), 0));
 }
 
 export function sumKindHours(data: DayData[], kind: DayData["kind"]): number {
@@ -129,44 +150,40 @@ export function sumKindHours(data: DayData[], kind: DayData["kind"]): number {
 export function buildMonthsData(
   year: number,
   settings: Settings,
+  settingsPeriods: SettingsPeriod[],
   holidayDates: ReadonlySet<string> = JP_HOLIDAYS,
 ): MonthData[] {
   return Array.from({ length: 12 }, (_, i) => ({
     m:    i,
-    data: getRealMonthData(year, i, settings, settings.showHolidays, holidayDates),
+    data: getRealMonthData(year, i, settings, settingsPeriods, settings.showHolidays, holidayDates),
   }));
 }
 
-export function exportCSV(monthsData: MonthData[], year: number): void {
-  const rows: string[][] = [["Date", "Start", "End", "Break(min)", "Hours", "Type"]];
+function collectEntries(monthsData: MonthData[]): Record<string, DayData["entry"]> {
+  const entries: Record<string, DayData["entry"]> = {};
   for (const { data } of monthsData) {
     for (const d of data) {
-      if (d.hrs > 0 || d.entry.vac) {
-        rows.push([
-          d.dateStr,
-          d.entry.start || "",
-          d.entry.end   || "",
-          String(d.entry.brk ?? 0),
-          d.hrs.toFixed(2),
-          d.kind,
-        ]);
+      if (d.hrs > 0 || d.entry.vac || d.entry.start || d.entry.end) {
+        entries[d.dateStr] = d.entry;
       }
     }
   }
-  const csv  = rows.map(r => r.join(",")).join("\n");
+  return entries;
+}
+
+export function exportCSV(monthsData: MonthData[], year: number): void {
+  const csv = serializeWorkEntriesCsv(collectEntries(monthsData));
   download(`workhours-${year}.csv`, new Blob([csv], { type: "text/csv" }));
 }
 
 export function exportJSON(monthsData: MonthData[], year: number): void {
-  const data: Record<string, unknown> = {};
-  for (const { data: days } of monthsData) {
-    for (const d of days) {
-      if (d.hrs > 0 || d.entry.vac) {
-        data[d.dateStr] = d.entry;
-      }
-    }
-  }
-  download(`workhours-${year}.json`, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const text = serializeWorkEntriesFile(createWorkEntriesFile(collectEntries(monthsData)), "json");
+  download(`workhours-${year}.json`, new Blob([text], { type: "application/json" }));
+}
+
+export function exportYAML(monthsData: MonthData[], year: number): void {
+  const text = serializeWorkEntriesFile(createWorkEntriesFile(collectEntries(monthsData)), "yaml");
+  download(`workhours-${year}.yaml`, new Blob([text], { type: "application/yaml" }));
 }
 
 function download(filename: string, blob: Blob): void {
