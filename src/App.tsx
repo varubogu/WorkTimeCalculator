@@ -78,17 +78,16 @@ function MobileMonthGrid({
       : "var(--accent-ok)";
   }
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6 }}>
+    <div className="mobile-month-grid">
       {monthsData.map(({ m, data }) => {
         const tot = sumHours(data);
         return (
-          <div key={m} onClick={() => onPickMonth(m)}
-            className="sketch-box tight"
-            style={{
-              padding: 6, cursor: "pointer",
-              outline: m === monthIdx ? "2.5px solid var(--accent-sel)" : "none",
-              outlineOffset: -2,
-            }}>
+          <button
+            key={m}
+            type="button"
+            onClick={() => onPickMonth(m)}
+            className={"mobile-month-item sketch-box tight" + (m === monthIdx ? " active" : "")}
+          >
             <div className="row between" style={{ alignItems: "center" }}>
               <span className="caveat" style={{ fontSize: 16 }}>{t.monthsShort[m]}</span>
               <div style={{
@@ -97,7 +96,7 @@ function MobileMonthGrid({
               }} />
             </div>
             <div className="mono" style={{ fontSize: 10 }}>{fmtH(tot, settings.hourDisplay)}</div>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -495,6 +494,47 @@ export default function App() {
           onSettings={() => setSettingsOpen(true)}
           importItems={importMenuItems}
           exportItems={exportMenuItems}
+          mobileMenu={close => (
+            <>
+              <div className="mobile-menu-section">
+                <div className="mobile-menu-title">{t.allMonths}</div>
+                <MobileMonthGrid
+                  monthsData={monthsData}
+                  monthIdx={monthIdx}
+                  settings={settings}
+                  t={t}
+                  onPickMonth={m => {
+                    setMonthIdx(m);
+                    close();
+                  }}
+                />
+              </div>
+              <div className="mobile-menu-section">
+                <label className="mobile-menu-row">
+                  <span>{t.lang}</span>
+                  <select value={lang} onChange={e => handleLang(e.target.value as Lang)}>
+                    <option value="ja">JA 日本語</option>
+                    <option value="en">EN English</option>
+                  </select>
+                </label>
+                <button className="mobile-menu-row as-button" type="button" onClick={handleDark}>
+                  <span>{t.dark}</span>
+                  <span className="mobile-menu-value">{dark ? "☀" : "☾"}</span>
+                </button>
+                <button
+                  className="mobile-menu-row as-button"
+                  type="button"
+                  onClick={() => {
+                    setSettingsOpen(true);
+                    close();
+                  }}
+                >
+                  <span>{t.settings}</span>
+                  <span className="mobile-menu-value">›</span>
+                </button>
+              </div>
+            </>
+          )}
         />
 
         {/* Desktop: 2-pane */}
@@ -537,10 +577,6 @@ export default function App() {
             )}
             {view === "calendar" ? <CalendarView /> : <ChartView />}
           </div>
-          <div className="sketch-divider" />
-          <div className="caveat mb-8" style={{ fontSize: 18 }}>{year} · {t.allMonths}</div>
-          <MobileMonthGrid monthsData={monthsData} monthIdx={monthIdx}
-            settings={settings} t={t} onPickMonth={setMonthIdx} />
           {missingSettingsDate && (
             <div className="sketch-box warning-box mb-12">
               {t.settingsPeriodMissing} {missingSettingsDate}

@@ -392,6 +392,93 @@ h3 { font-size: 18px; line-height: 1.2; }
   color: var(--ink) !important;
 }
 
+.mobile-menu-wrap {
+  position: relative;
+  align-items: center;
+}
+
+.mobile-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 120;
+  width: min(360px, calc(100vw - 20px));
+  max-height: calc(100dvh - 92px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--ruled);
+  border-radius: var(--radius);
+  background: var(--paper-2);
+  box-shadow: var(--shadow-sm);
+}
+
+.mobile-menu-section + .mobile-menu-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ruled);
+}
+
+.mobile-menu-title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+
+.mobile-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mobile-month-item {
+  width: 100%;
+  padding: 6px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  appearance: none;
+}
+
+.mobile-month-item.active {
+  outline: 2.5px solid var(--accent-sel);
+  outline-offset: -2px;
+}
+
+.mobile-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 2px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.mobile-menu-row.as-button {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mobile-menu-row select {
+  border: 1px solid var(--ruled);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  background: var(--paper-2);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+}
+
+.mobile-menu-value {
+  color: var(--ink-2);
+  font-weight: 700;
+}
+
 /* Sidebar */
 .sidebar {
   border-right: 1px solid var(--ruled);
@@ -724,6 +811,7 @@ h3 { font-size: 18px; line-height: 1.2; }
   .app-shell { padding: 10px 10px 36px; }
   .app-header { padding: 12px; }
   .app-header .brand { font-size: 16px; }
+  .app-header-actions .mobile-moved-action { display: none !important; }
   .cal .day { min-height: 56px; padding: 6px; }
 }
 

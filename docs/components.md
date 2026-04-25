@@ -22,7 +22,7 @@
 
 [src/components/AppHeader.tsx](../src/components/AppHeader.tsx)
 
-アプリ上部のヘッダ。ブランド表示と、言語切替・読み込み・書き出し・ダークモード切替・設定モーダル起動のコントロール。読み込み・書き出し・設定はアイコンボタンで表示する。
+アプリ上部のヘッダ。ブランド表示と、言語切替・読み込み・書き出し・ダークモード切替・設定モーダル起動のコントロール。読み込み・書き出し・設定はアイコンボタンで表示する。モバイルではハンバーガーメニューを表示し、月の一覧と言語切替・ダークモード切替・設定をメニュー内に配置する。
 
 **Props**
 
@@ -34,6 +34,9 @@
 | `dark` | `boolean` | ダーク有効かどうか |
 | `onDark` | `() => void` | ダークトグル |
 | `onSettings` | `() => void` | 設定モーダルを開く |
+| `importItems` | `{ label: string; onSelect: () => void }[]` | 読み込みメニュー項目 |
+| `exportItems` | `{ label: string; onSelect: () => void }[]` | 書き出しメニュー項目 |
+| `mobileMenu` | `(close: () => void) => ReactNode` | モバイルのハンバーガーメニュー内容 |
 
 ---
 

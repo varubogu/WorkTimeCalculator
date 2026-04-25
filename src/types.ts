@@ -92,6 +92,7 @@ export interface Translations {
   tagline: string;
   lang: string;
   dark: string;
+  menu: string;
   settings: string;
   export: string;
   import: string;
