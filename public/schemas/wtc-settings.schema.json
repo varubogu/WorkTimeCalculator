@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/schemas/wtc-settings.schema.json",
+  "title": "Work Time Calculator Settings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "baseSettings", "periods"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "schema": {
+      "const": "wtc-settings/v1"
+    },
+    "baseSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dayHours",
+        "dayStart",
+        "timeStepMin",
+        "hourDisplay",
+        "monthTargetMin",
+        "monthTargetMax",
+        "monthOvertimeTargetMin",
+        "monthOvertimeTargetMax",
+        "yearTargetMin",
+        "yearTargetMax",
+        "yearOvertimeTargetMin",
+        "yearOvertimeTargetMax",
+        "breakMin",
+        "showHolidays",
+        "lang",
+        "dark"
+      ],
+      "properties": {
+        "dayHours": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "dayStart": {
+          "type": "string",
+          "pattern": "^\\d{1,2}:\\d{2}$"
+        },
+        "timeStepMin": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "hourDisplay": {
+          "enum": ["clock", "decimal"]
+        },
+        "monthTargetMin": {
+          "type": "number"
+        },
+        "monthTargetMax": {
+          "type": "number"
+        },
+        "monthOvertimeTargetMin": {
+          "type": "number"
+        },
+        "monthOvertimeTargetMax": {
+          "type": "number"
+        },
+        "yearTargetMin": {
+          "type": "number"
+        },
+        "yearTargetMax": {
+          "type": "number"
+        },
+        "yearOvertimeTargetMin": {
+          "type": "number"
+        },
+        "yearOvertimeTargetMax": {
+          "type": "number"
+        },
+        "breakMin": {
+          "type": "number",
+          "minimum": 0
+        },
+        "showHolidays": {
+          "type": "boolean"
+        },
+        "lang": {
+          "enum": ["ja", "en"]
+        },
+        "dark": {
+          "type": "boolean"
+        }
+      }
+    },
+    "periods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["effectiveFrom", "effectiveTo", "overrides"],
+        "properties": {
+          "effectiveFrom": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effectiveTo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "overrides": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "dayHours": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "dayStart": {
+                "type": "string",
+                "pattern": "^\\d{1,2}:\\d{2}$"
+              },
+              "timeStepMin": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120
+              },
+              "breakMin": {
+                "type": "number",
+                "minimum": 0
+              },
+              "showHolidays": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

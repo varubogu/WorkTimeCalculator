@@ -218,6 +218,7 @@ JSON / YAML 共通構造:
 
 ```json
 {
+  "$schema": "https://example.com/schemas/wtc-work-entries.schema.json",
   "schema": "wtc-work-entries/v1",
   "entries": [
     { "date": "2026-04-19", "start": "09:00", "end": "18:00", "breakMin": 60, "vacation": false }
@@ -237,6 +238,7 @@ JSON / YAML 共通構造:
 
 ```json
 {
+  "$schema": "https://example.com/schemas/wtc-settings.schema.json",
   "schema": "wtc-settings/v1",
   "baseSettings": {
     "dayHours": 8,
@@ -252,7 +254,9 @@ JSON / YAML 共通構造:
 }
 ```
 
-`src/fileFormats.ts` には JSON Schema 相当の定義（`WORK_ENTRIES_JSON_SCHEMA`, `SETTINGS_JSON_SCHEMA`）と、内容検証用のバリデータを置いています。インポート時はファイル拡張子ごとにパースし、構造検証に失敗した場合は取り込みません。
+`src/fileFormats.ts` には JSON Schema 定義（`WORK_ENTRIES_JSON_SCHEMA`, `SETTINGS_JSON_SCHEMA`）と、内容検証用のバリデータを置いています。配信用のスキーマ実体は `public/schemas/` にあり、ビルド後は `/schemas/wtc-work-entries.schema.json` と `/schemas/wtc-settings.schema.json` で同一ホストから参照できます。JSON / YAML のエクスポートには `$schema` が付きます。
+
+`$schema` のベースURLは `VITE_SCHEMA_BASE_URL` で指定できます。未指定の場合はブラウザの現在のオリジンを使い、同一ホストの `/schemas/` を指します。
 
 ## エクスポート / インポート
 

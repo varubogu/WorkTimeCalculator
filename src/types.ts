@@ -71,11 +71,13 @@ export interface WorkEntriesFileEntry {
 }
 
 export interface WorkEntriesFile {
+  $schema?: string;
   schema: "wtc-work-entries/v1";
   entries: WorkEntriesFileEntry[];
 }
 
 export interface SettingsFile {
+  $schema?: string;
   schema: "wtc-settings/v1";
   baseSettings: Settings;
   periods: SettingsPeriod[];

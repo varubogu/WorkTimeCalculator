@@ -28,6 +28,12 @@ bun install
 PORT=8080 bun start
 ```
 
+JSON / YAML エクスポートに付与する `$schema` のベースURLは `VITE_SCHEMA_BASE_URL` で変更可能です。未指定の場合は実行中ページの同一オリジンを使います。
+
+```bash
+VITE_SCHEMA_BASE_URL=https://example.com bun run build
+```
+
 ## 開発フロー
 
 1. `bun dev` で開発サーバーを起動（Vite の HMR で即時反映）。
@@ -49,6 +55,7 @@ PORT=8080 bun start
 | `tsconfig.json` | ルート tsconfig（`app` と `node` の参照をまとめる） |
 | `tsconfig.app.json` | アプリコード（`src/`）用 |
 | `tsconfig.node.json` | Vite 設定ファイル自体用 |
+| `public/schemas/*.schema.json` | JSON / YAML エクスポート向け JSON Schema。ビルド後は `/schemas/` から配信 |
 
 ## 新機能の追加手順
 

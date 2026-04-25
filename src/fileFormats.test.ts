@@ -12,6 +12,15 @@ import {
 import { defaultSettings } from "./storage";
 
 describe("file formats", () => {
+  it("作業時間JSONに同一ホストのスキーマURLを含める", () => {
+    const file = createWorkEntriesFile({
+      "2026-04-01": { start: "09:00", end: "18:00", brk: 60, vac: false },
+    });
+
+    expect(file.$schema).toBe(`${window.location.origin}/schemas/wtc-work-entries.schema.json`);
+    expect(JSON.parse(serializeWorkEntriesFile(file, "json")).$schema).toBe(file.$schema);
+  });
+
   it("作業時間JSONを往復できる", () => {
     const file = createWorkEntriesFile({
       "2026-04-01": { start: "09:00", end: "18:00", brk: 60, vac: false },
@@ -39,6 +48,7 @@ describe("file formats", () => {
     const parsed = parseWorkEntriesText(serializeWorkEntriesFile(file, "yaml"), "yaml");
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
+      expect(parsed.value.$schema).toBe(`${window.location.origin}/schemas/wtc-work-entries.schema.json`);
       expect(parsed.value.entries).toHaveLength(2);
       expect(parsed.value.entries[1].vacation).toBe(true);
     }
@@ -65,6 +75,7 @@ describe("file formats", () => {
     const parsed = parseSettingsText(serializeSettingsFile(file, "yaml"), "yaml");
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
+      expect(parsed.value.$schema).toBe(`${window.location.origin}/schemas/wtc-settings.schema.json`);
       expect(parsed.value.periods[0].overrides.dayHours).toBe(7.5);
       expect(parsed.value.periods[0].effectiveFrom).toBeNull();
     }

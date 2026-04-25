@@ -8,13 +8,18 @@ import type {
   WorkEntriesFileEntry,
 } from "./types";
 
+const WORK_ENTRIES_SCHEMA_PATH = "/schemas/wtc-work-entries.schema.json";
+const SETTINGS_SCHEMA_PATH = "/schemas/wtc-settings.schema.json";
+
 export const WORK_ENTRIES_JSON_SCHEMA = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://worktimecalculator.local/schemas/wtc-work-entries.schema.json",
+  $id: WORK_ENTRIES_SCHEMA_PATH,
+  title: "Work Time Calculator Work Entries",
   type: "object",
   additionalProperties: false,
   required: ["schema", "entries"],
   properties: {
+    $schema: { type: "string", format: "uri" },
     schema: { const: "wtc-work-entries/v1" },
     entries: {
       type: "array",
@@ -24,8 +29,8 @@ export const WORK_ENTRIES_JSON_SCHEMA = {
         required: ["date", "start", "end", "breakMin", "vacation"],
         properties: {
           date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-          start: { type: "string" },
-          end: { type: "string" },
+          start: { type: "string", pattern: "^(\\d{1,2}:\\d{2})?$" },
+          end: { type: "string", pattern: "^(\\d{1,2}:\\d{2})?$" },
           breakMin: { type: "number", minimum: 0 },
           vacation: { type: "boolean" },
         },
@@ -36,13 +41,54 @@ export const WORK_ENTRIES_JSON_SCHEMA = {
 
 export const SETTINGS_JSON_SCHEMA = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://worktimecalculator.local/schemas/wtc-settings.schema.json",
+  $id: SETTINGS_SCHEMA_PATH,
+  title: "Work Time Calculator Settings",
   type: "object",
   additionalProperties: false,
   required: ["schema", "baseSettings", "periods"],
   properties: {
+    $schema: { type: "string", format: "uri" },
     schema: { const: "wtc-settings/v1" },
-    baseSettings: { type: "object" },
+    baseSettings: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "dayHours",
+        "dayStart",
+        "timeStepMin",
+        "hourDisplay",
+        "monthTargetMin",
+        "monthTargetMax",
+        "monthOvertimeTargetMin",
+        "monthOvertimeTargetMax",
+        "yearTargetMin",
+        "yearTargetMax",
+        "yearOvertimeTargetMin",
+        "yearOvertimeTargetMax",
+        "breakMin",
+        "showHolidays",
+        "lang",
+        "dark",
+      ],
+      properties: {
+        dayHours: { type: "number", exclusiveMinimum: 0 },
+        dayStart: { type: "string", pattern: "^\\d{1,2}:\\d{2}$" },
+        timeStepMin: { type: "integer", minimum: 1, maximum: 120 },
+        hourDisplay: { enum: ["clock", "decimal"] },
+        monthTargetMin: { type: "number" },
+        monthTargetMax: { type: "number" },
+        monthOvertimeTargetMin: { type: "number" },
+        monthOvertimeTargetMax: { type: "number" },
+        yearTargetMin: { type: "number" },
+        yearTargetMax: { type: "number" },
+        yearOvertimeTargetMin: { type: "number" },
+        yearOvertimeTargetMax: { type: "number" },
+        breakMin: { type: "number", minimum: 0 },
+        showHolidays: { type: "boolean" },
+        lang: { enum: ["ja", "en"] },
+        dark: { type: "boolean" },
+      },
+    },
     periods: {
       type: "array",
       items: {
@@ -50,9 +96,19 @@ export const SETTINGS_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["effectiveFrom", "effectiveTo", "overrides"],
         properties: {
-          effectiveFrom: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-          effectiveTo: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-          overrides: { type: "object" },
+          effectiveFrom: { anyOf: [{ type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" }, { type: "null" }] },
+          effectiveTo: { anyOf: [{ type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" }, { type: "null" }] },
+          overrides: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              dayHours: { type: "number", exclusiveMinimum: 0 },
+              dayStart: { type: "string", pattern: "^\\d{1,2}:\\d{2}$" },
+              timeStepMin: { type: "integer", minimum: 1, maximum: 120 },
+              breakMin: { type: "number", minimum: 0 },
+              showHolidays: { type: "boolean" },
+            },
+          },
         },
       },
     },
@@ -241,6 +297,21 @@ function parseByFormat(text: string, format: "json" | "yaml"): unknown {
   return format === "json" ? JSON.parse(text) : parseSimpleYaml(text);
 }
 
+function schemaUrl(path: string): string {
+  const configured = import.meta.env.VITE_SCHEMA_BASE_URL?.trim().replace(/\/+$/, "");
+  if (configured) return `${configured}${path}`;
+  if (typeof window !== "undefined" && window.location.origin) return `${window.location.origin}${path}`;
+  return path;
+}
+
+export function workEntriesSchemaUrl(): string {
+  return schemaUrl(WORK_ENTRIES_SCHEMA_PATH);
+}
+
+export function settingsSchemaUrl(): string {
+  return schemaUrl(SETTINGS_SCHEMA_PATH);
+}
+
 function validateWorkEntry(entry: unknown, index: number): string[] {
   if (!isRecord(entry)) return [`entries[${index}] must be an object.`];
   const errors: string[] = [];
@@ -270,6 +341,7 @@ export function validateWorkEntriesFile(value: unknown): ParseSuccess<WorkEntrie
   return {
     ok: true,
     value: {
+      $schema: typeof value.$schema === "string" ? value.$schema : undefined,
       schema: "wtc-work-entries/v1",
       entries: entries as WorkEntriesFileEntry[],
     },
@@ -308,6 +380,7 @@ export function validateSettingsFile(value: unknown): ParseSuccess<SettingsFile>
   return {
     ok: true,
     value: {
+      $schema: typeof value.$schema === "string" ? value.$schema : undefined,
       schema: "wtc-settings/v1",
       baseSettings,
       periods: mergeSettingsPeriods(periods as Partial<SettingsPeriod>[]),
@@ -317,6 +390,7 @@ export function validateSettingsFile(value: unknown): ParseSuccess<SettingsFile>
 
 export function createWorkEntriesFile(entries: Record<string, Entry>): WorkEntriesFile {
   return {
+    $schema: workEntriesSchemaUrl(),
     schema: "wtc-work-entries/v1",
     entries: Object.entries(entries)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -332,6 +406,7 @@ export function createWorkEntriesFile(entries: Record<string, Entry>): WorkEntri
 
 export function createSettingsFile(baseSettings: Settings, periods: SettingsPeriod[]): SettingsFile {
   return {
+    $schema: settingsSchemaUrl(),
     schema: "wtc-settings/v1",
     baseSettings,
     periods: mergeSettingsPeriods(periods),
