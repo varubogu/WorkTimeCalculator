@@ -155,8 +155,14 @@ export interface Translations {
   click: string;
   note: string;
   noData: string;
+  privacyNotice: string;
+  calendarTab: string;
+  chartTab: string;
   yearTarget: string;
   monthTarget: string;
+  hoursSection: string;
+  monthlyTargetSection: string;
+  yearlyTargetSection: string;
   allMonths: string;
   prev: string;
   next: string;

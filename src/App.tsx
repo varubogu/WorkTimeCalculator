@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import type { DayData, Entry, Lang, MonthData, Settings, SettingsPeriod } from "./types";
+import type { DayData, Entry, Lang, MonthData, Settings, SettingsPeriod, Translations } from "./types";
 import I18N from "./i18n";
 import {
   ensureSettingsPeriods,
@@ -49,14 +49,14 @@ import SettingsModal   from "./components/SettingsModal";
 // ── View tabs ──────────────────────────────────────────
 type View = "calendar" | "chart";
 
-function ViewTabs({ view, setView, lang }: { view: View; setView: (v: View) => void; lang: Lang }) {
+function ViewTabs({ view, setView, t }: { view: View; setView: (v: View) => void; t: Translations }) {
   return (
     <div className="tab-bar">
       <div className={"tab" + (view === "calendar" ? " active" : "")} onClick={() => setView("calendar")}>
-        {lang === "ja" ? "カレンダー" : "Calendar"}
+        {t.calendarTab}
       </div>
       <div className={"tab" + (view === "chart" ? " active" : "")} onClick={() => setView("chart")}>
-        {lang === "ja" ? "チャート" : "Chart"}
+        {t.chartTab}
       </div>
     </div>
   );
@@ -398,7 +398,6 @@ export default function App() {
       </div>
       <div className="row between mt-12" style={{ flexWrap: "wrap", gap: 8 }}>
         <Legend t={t} />
-        <span className="mono muted small">{t.click} → {t.addEntry}</span>
       </div>
     </div>
   );
@@ -504,7 +503,7 @@ export default function App() {
             settings={settings} t={t} onPickMonth={setMonthIdx} />
           <div style={{ flex: 1, padding: 14, minWidth: 0 }}>
             <div className="row between mb-12" style={{ alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <ViewTabs view={view} setView={setView} lang={lang} />
+              <ViewTabs view={view} setView={setView} t={t} />
               <div className="row gap-8" style={{ flexWrap: "wrap" }}>
                 <button className="btn sm" onClick={() => setYear(y => y - 1)}>← {year - 1}</button>
                 <button className="btn sm" onClick={() => setMonthIdx(m => Math.max(0, m - 1))}>‹ {t.prev}</button>
@@ -529,7 +528,7 @@ export default function App() {
               <button className="btn sm" onClick={() => setYear(y => y + 1)}>{year + 1}›</button>
             </div>
           </div>
-          <ViewTabs view={view} setView={setView} lang={lang} />
+          <ViewTabs view={view} setView={setView} t={t} />
           <div className="mt-12">
             {missingSettingsDate && (
               <div className="sketch-box warning-box mb-12">
@@ -551,9 +550,7 @@ export default function App() {
       </div>
 
       <div className="mono small muted" style={{ textAlign: "center", marginTop: 12 }}>
-        {lang === "ja"
-          ? "データはすべてブラウザ内に保存されます"
-          : "All data is stored locally in your browser"}
+        {t.privacyNotice}
       </div>
 
       {editDay && (

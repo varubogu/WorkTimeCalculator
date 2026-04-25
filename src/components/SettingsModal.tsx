@@ -193,32 +193,32 @@ export default function SettingsModal({ settings, settingsPeriods, t, onSave, on
 
         <div className="settings-modal-body">
           <div className="settings-section">
-            <div className="settings-section-title">Hours</div>
+            <div className="settings-section-title">{t.hoursSection}</div>
             <div className="settings-row"><label>{t.regHoursPerDay}</label>{numInput("dayHours", 1, 24, 0.25)}</div>
             <div className="settings-row"><label>{t.regularStartTime}</label>{timeInput("dayStart")}</div>
-            <div className="settings-row"><label>{t.timeStep} (min)</label>{numInput("timeStepMin", 1, 120)}</div>
-            <div className="settings-row"><label>{t.defaultBreak} (min)</label>{numInput("breakMin", 0, 480)}</div>
+            <div className="settings-row"><label>{t.timeStep} ({t.minutes})</label>{numInput("timeStepMin", 1, 120)}</div>
+            <div className="settings-row"><label>{t.defaultBreak} ({t.minutes})</label>{numInput("breakMin", 0, 480)}</div>
             <div className="settings-row"><label>{t.hourDisplay}</label>{hourDisplayInput}</div>
           </div>
 
           <div className="sketch-divider" />
 
           <div className="settings-section">
-            <div className="settings-section-title">Monthly target</div>
-            <div className="settings-row"><label>{t.monthTargetMin} (h)</label>{numInput("monthTargetMin", 0, 400)}</div>
-            <div className="settings-row"><label>{t.monthTargetMax} (h)</label>{numInput("monthTargetMax", 0, 400)}</div>
-            <div className="settings-row"><label>{t.monthOvertimeTargetMin} (h)</label>{numInput("monthOvertimeTargetMin", 0, 200)}</div>
-            <div className="settings-row"><label>{t.monthOvertimeTargetMax} (h)</label>{numInput("monthOvertimeTargetMax", 0, 200)}</div>
+            <div className="settings-section-title">{t.monthlyTargetSection}</div>
+            <div className="settings-row"><label>{t.monthTargetMin} ({t.h})</label>{numInput("monthTargetMin", 0, 400)}</div>
+            <div className="settings-row"><label>{t.monthTargetMax} ({t.h})</label>{numInput("monthTargetMax", 0, 400)}</div>
+            <div className="settings-row"><label>{t.monthOvertimeTargetMin} ({t.h})</label>{numInput("monthOvertimeTargetMin", 0, 200)}</div>
+            <div className="settings-row"><label>{t.monthOvertimeTargetMax} ({t.h})</label>{numInput("monthOvertimeTargetMax", 0, 200)}</div>
           </div>
 
           <div className="sketch-divider" />
 
           <div className="settings-section">
-            <div className="settings-section-title">Yearly target</div>
-            <div className="settings-row"><label>{t.yearTargetMin} (h)</label>{numInput("yearTargetMin", 0, 5000)}</div>
-            <div className="settings-row"><label>{t.yearTargetMax} (h)</label>{numInput("yearTargetMax", 0, 5000)}</div>
-            <div className="settings-row"><label>{t.yearOvertimeTargetMin} (h)</label>{numInput("yearOvertimeTargetMin", 0, 2000)}</div>
-            <div className="settings-row"><label>{t.yearOvertimeTargetMax} (h)</label>{numInput("yearOvertimeTargetMax", 0, 2000)}</div>
+            <div className="settings-section-title">{t.yearlyTargetSection}</div>
+            <div className="settings-row"><label>{t.yearTargetMin} ({t.h})</label>{numInput("yearTargetMin", 0, 5000)}</div>
+            <div className="settings-row"><label>{t.yearTargetMax} ({t.h})</label>{numInput("yearTargetMax", 0, 5000)}</div>
+            <div className="settings-row"><label>{t.yearOvertimeTargetMin} ({t.h})</label>{numInput("yearOvertimeTargetMin", 0, 2000)}</div>
+            <div className="settings-row"><label>{t.yearOvertimeTargetMax} ({t.h})</label>{numInput("yearOvertimeTargetMax", 0, 2000)}</div>
           </div>
 
           <div className="sketch-divider" />
