@@ -191,193 +191,195 @@ export default function SettingsModal({ settings, settingsPeriods, t, onSave, on
           <button className="btn sm" onClick={onClose}>✕</button>
         </div>
 
-        <div className="settings-section">
-          <div className="settings-section-title">Hours</div>
-          <div className="settings-row"><label>{t.regHoursPerDay}</label>{numInput("dayHours", 1, 24, 0.25)}</div>
-          <div className="settings-row"><label>{t.regularStartTime}</label>{timeInput("dayStart")}</div>
-          <div className="settings-row"><label>{t.timeStep} (min)</label>{numInput("timeStepMin", 1, 120)}</div>
-          <div className="settings-row"><label>{t.defaultBreak} (min)</label>{numInput("breakMin", 0, 480)}</div>
-          <div className="settings-row"><label>{t.hourDisplay}</label>{hourDisplayInput}</div>
-        </div>
-
-        <div className="sketch-divider" />
-
-        <div className="settings-section">
-          <div className="settings-section-title">Monthly target</div>
-          <div className="settings-row"><label>{t.monthTargetMin} (h)</label>{numInput("monthTargetMin", 0, 400)}</div>
-          <div className="settings-row"><label>{t.monthTargetMax} (h)</label>{numInput("monthTargetMax", 0, 400)}</div>
-          <div className="settings-row"><label>{t.monthOvertimeTargetMin} (h)</label>{numInput("monthOvertimeTargetMin", 0, 200)}</div>
-          <div className="settings-row"><label>{t.monthOvertimeTargetMax} (h)</label>{numInput("monthOvertimeTargetMax", 0, 200)}</div>
-        </div>
-
-        <div className="sketch-divider" />
-
-        <div className="settings-section">
-          <div className="settings-section-title">Yearly target</div>
-          <div className="settings-row"><label>{t.yearTargetMin} (h)</label>{numInput("yearTargetMin", 0, 5000)}</div>
-          <div className="settings-row"><label>{t.yearTargetMax} (h)</label>{numInput("yearTargetMax", 0, 5000)}</div>
-          <div className="settings-row"><label>{t.yearOvertimeTargetMin} (h)</label>{numInput("yearOvertimeTargetMin", 0, 2000)}</div>
-          <div className="settings-row"><label>{t.yearOvertimeTargetMax} (h)</label>{numInput("yearOvertimeTargetMax", 0, 2000)}</div>
-        </div>
-
-        <div className="sketch-divider" />
-
-        <div className="settings-row">
-          <label>{t.autoHoliday}</label>
-          <div
-            className={"toggle" + (s.showHolidays ? " on" : "")}
-            onClick={() => setS(p => ({ ...p, showHolidays: !p.showHolidays }))}
-          />
-        </div>
-
-        <div className="sketch-divider" />
-
-        <div className="settings-section">
-          <div className="settings-section-title">{t.settingsPeriods}</div>
-          <div className="mono small muted" style={{ marginBottom: 8 }}>{t.settingsPeriodHelp}</div>
-          <div className="settings-period-toolbar">
-            <select
-              className="settings-period-select"
-              aria-label={t.settingsPeriodTarget}
-              value={selectedPeriodId ?? ""}
-              onChange={e => setSelectedPeriodId(e.target.value || null)}
-            >
-              {!selectedPeriod && <option value="">{t.settingsPeriodNone}</option>}
-              {periodOptions.map(period => (
-                <option key={period.id} value={period.id}>{period.label}</option>
-              ))}
-            </select>
-            <button
-              className="btn sm"
-              type="button"
-              aria-label={t.addSettingsPeriod}
-              onClick={() => setIsAddingPeriod(prev => !prev)}
-            >
-              ＋
-            </button>
+        <div className="settings-modal-body">
+          <div className="settings-section">
+            <div className="settings-section-title">Hours</div>
+            <div className="settings-row"><label>{t.regHoursPerDay}</label>{numInput("dayHours", 1, 24, 0.25)}</div>
+            <div className="settings-row"><label>{t.regularStartTime}</label>{timeInput("dayStart")}</div>
+            <div className="settings-row"><label>{t.timeStep} (min)</label>{numInput("timeStepMin", 1, 120)}</div>
+            <div className="settings-row"><label>{t.defaultBreak} (min)</label>{numInput("breakMin", 0, 480)}</div>
+            <div className="settings-row"><label>{t.hourDisplay}</label>{hourDisplayInput}</div>
           </div>
 
-          {isAddingPeriod && (
-            <div className="sketch-box tight settings-period-add">
-              <div className="settings-row">
-                <label>{t.settingsPeriodFrom}</label>
-                <input
-                  type="date"
-                  aria-label={t.settingsPeriodFrom}
-                  value={newPeriod.effectiveFrom}
-                  onChange={e => setNewPeriod(prev => ({ ...prev, effectiveFrom: e.target.value }))}
-                />
-              </div>
-              <div className="settings-row">
-                <label>{t.settingsPeriodTo}</label>
-                <input
-                  type="date"
-                  aria-label={t.settingsPeriodTo}
-                  value={newPeriod.effectiveTo}
-                  onChange={e => setNewPeriod(prev => ({ ...prev, effectiveTo: e.target.value }))}
-                />
-              </div>
-              <div className="row gap-8" style={{ justifyContent: "flex-end" }}>
-                <button className="btn sm" type="button" onClick={() => setIsAddingPeriod(false)}>{t.cancel}</button>
-                <button className="btn sm" type="button" onClick={handleAddPeriod}>{t.addSettingsPeriod}</button>
-              </div>
-            </div>
-          )}
+          <div className="sketch-divider" />
 
-          {selectedPeriod ? (
-            <div key={selectedPeriod.id} className="sketch-box tight settings-period-editor">
-              <div className="settings-row">
-                <label>{t.settingsPeriodFrom}</label>
-                <input
-                  type="date"
-                  aria-label={t.settingsPeriodFrom}
-                  value={toInputValue(selectedPeriod.effectiveFrom)}
-                  onChange={e => handleSelectedPeriodFromChange(e.target.value)}
-                />
-              </div>
-              <div className="settings-row">
-                <label>{t.settingsPeriodTo}</label>
-                <input
-                  type="date"
-                  aria-label={t.settingsPeriodTo}
-                  value={toInputValue(selectedPeriod.effectiveTo)}
-                  onChange={e => handleSelectedPeriodToChange(e.target.value)}
-                />
-              </div>
-              <div className="settings-row">
-                <label>{t.regHoursPerDay}</label>
-                <input
-                  type="number"
-                  aria-label={t.regHoursPerDay}
-                  value={selectedPeriod.overrides.dayHours ?? s.dayHours}
-                  min={1}
-                  max={24}
-                  step={0.25}
-                  onChange={e => updatePeriod(selectedPeriodIndex, {
-                    ...selectedPeriod,
-                    overrides: { ...selectedPeriod.overrides, dayHours: parseFloat(e.target.value) || 0 },
-                  })}
-                />
-              </div>
-              <div className="settings-row">
-                <label>{t.regularStartTime}</label>
-                <input
-                  type="time"
-                  aria-label={t.regularStartTime}
-                  value={selectedPeriod.overrides.dayStart ?? s.dayStart}
-                  step={Math.max(1, Math.floor((selectedPeriod.overrides.timeStepMin ?? s.timeStepMin) || 1)) * 60}
-                  onChange={e => updatePeriod(selectedPeriodIndex, {
-                    ...selectedPeriod,
-                    overrides: { ...selectedPeriod.overrides, dayStart: e.target.value },
-                  })}
-                />
-              </div>
-              <div className="settings-row">
-                <label>{t.defaultBreak} ({t.minutes})</label>
-                <input
-                  type="number"
-                  aria-label={t.defaultBreak}
-                  value={selectedPeriod.overrides.breakMin ?? s.breakMin}
-                  min={0}
-                  max={480}
-                  step={1}
-                  onChange={e => updatePeriod(selectedPeriodIndex, {
-                    ...selectedPeriod,
-                    overrides: { ...selectedPeriod.overrides, breakMin: parseInt(e.target.value) || 0 },
-                  })}
-                />
-              </div>
-              <div className="settings-row">
-                <label>{t.timeStep} ({t.minutes})</label>
-                <input
-                  type="number"
-                  aria-label={t.timeStep}
-                  value={selectedPeriod.overrides.timeStepMin ?? s.timeStepMin}
-                  min={1}
-                  max={120}
-                  step={1}
-                  onChange={e => updatePeriod(selectedPeriodIndex, {
-                    ...selectedPeriod,
-                    overrides: { ...selectedPeriod.overrides, timeStepMin: parseInt(e.target.value) || 1 },
-                  })}
-                />
-              </div>
-              <div className="row" style={{ justifyContent: "flex-end" }}>
-                <button
-                  className="btn sm"
-                  type="button"
-                  onClick={handleRemoveSelectedPeriod}
-                >
-                  {t.removeSettingsPeriod}
-                </button>
-              </div>
+          <div className="settings-section">
+            <div className="settings-section-title">Monthly target</div>
+            <div className="settings-row"><label>{t.monthTargetMin} (h)</label>{numInput("monthTargetMin", 0, 400)}</div>
+            <div className="settings-row"><label>{t.monthTargetMax} (h)</label>{numInput("monthTargetMax", 0, 400)}</div>
+            <div className="settings-row"><label>{t.monthOvertimeTargetMin} (h)</label>{numInput("monthOvertimeTargetMin", 0, 200)}</div>
+            <div className="settings-row"><label>{t.monthOvertimeTargetMax} (h)</label>{numInput("monthOvertimeTargetMax", 0, 200)}</div>
+          </div>
+
+          <div className="sketch-divider" />
+
+          <div className="settings-section">
+            <div className="settings-section-title">Yearly target</div>
+            <div className="settings-row"><label>{t.yearTargetMin} (h)</label>{numInput("yearTargetMin", 0, 5000)}</div>
+            <div className="settings-row"><label>{t.yearTargetMax} (h)</label>{numInput("yearTargetMax", 0, 5000)}</div>
+            <div className="settings-row"><label>{t.yearOvertimeTargetMin} (h)</label>{numInput("yearOvertimeTargetMin", 0, 2000)}</div>
+            <div className="settings-row"><label>{t.yearOvertimeTargetMax} (h)</label>{numInput("yearOvertimeTargetMax", 0, 2000)}</div>
+          </div>
+
+          <div className="sketch-divider" />
+
+          <div className="settings-row">
+            <label>{t.autoHoliday}</label>
+            <div
+              className={"toggle" + (s.showHolidays ? " on" : "")}
+              onClick={() => setS(p => ({ ...p, showHolidays: !p.showHolidays }))}
+            />
+          </div>
+
+          <div className="sketch-divider" />
+
+          <div className="settings-section">
+            <div className="settings-section-title">{t.settingsPeriods}</div>
+            <div className="mono small muted" style={{ marginBottom: 8 }}>{t.settingsPeriodHelp}</div>
+            <div className="settings-period-toolbar">
+              <select
+                className="settings-period-select"
+                aria-label={t.settingsPeriodTarget}
+                value={selectedPeriodId ?? ""}
+                onChange={e => setSelectedPeriodId(e.target.value || null)}
+              >
+                {!selectedPeriod && <option value="">{t.settingsPeriodNone}</option>}
+                {periodOptions.map(period => (
+                  <option key={period.id} value={period.id}>{period.label}</option>
+                ))}
+              </select>
+              <button
+                className="btn sm"
+                type="button"
+                aria-label={t.addSettingsPeriod}
+                onClick={() => setIsAddingPeriod(prev => !prev)}
+              >
+                ＋
+              </button>
             </div>
-          ) : (
-            <div className="mono small muted settings-period-empty">{t.settingsPeriodNone}</div>
-          )}
+
+            {isAddingPeriod && (
+              <div className="sketch-box tight settings-period-add">
+                <div className="settings-row">
+                  <label>{t.settingsPeriodFrom}</label>
+                  <input
+                    type="date"
+                    aria-label={t.settingsPeriodFrom}
+                    value={newPeriod.effectiveFrom}
+                    onChange={e => setNewPeriod(prev => ({ ...prev, effectiveFrom: e.target.value }))}
+                  />
+                </div>
+                <div className="settings-row">
+                  <label>{t.settingsPeriodTo}</label>
+                  <input
+                    type="date"
+                    aria-label={t.settingsPeriodTo}
+                    value={newPeriod.effectiveTo}
+                    onChange={e => setNewPeriod(prev => ({ ...prev, effectiveTo: e.target.value }))}
+                  />
+                </div>
+                <div className="row gap-8" style={{ justifyContent: "flex-end" }}>
+                  <button className="btn sm" type="button" onClick={() => setIsAddingPeriod(false)}>{t.cancel}</button>
+                  <button className="btn sm" type="button" onClick={handleAddPeriod}>{t.addSettingsPeriod}</button>
+                </div>
+              </div>
+            )}
+
+            {selectedPeriod ? (
+              <div key={selectedPeriod.id} className="sketch-box tight settings-period-editor">
+                <div className="settings-row">
+                  <label>{t.settingsPeriodFrom}</label>
+                  <input
+                    type="date"
+                    aria-label={t.settingsPeriodFrom}
+                    value={toInputValue(selectedPeriod.effectiveFrom)}
+                    onChange={e => handleSelectedPeriodFromChange(e.target.value)}
+                  />
+                </div>
+                <div className="settings-row">
+                  <label>{t.settingsPeriodTo}</label>
+                  <input
+                    type="date"
+                    aria-label={t.settingsPeriodTo}
+                    value={toInputValue(selectedPeriod.effectiveTo)}
+                    onChange={e => handleSelectedPeriodToChange(e.target.value)}
+                  />
+                </div>
+                <div className="settings-row">
+                  <label>{t.regHoursPerDay}</label>
+                  <input
+                    type="number"
+                    aria-label={t.regHoursPerDay}
+                    value={selectedPeriod.overrides.dayHours ?? s.dayHours}
+                    min={1}
+                    max={24}
+                    step={0.25}
+                    onChange={e => updatePeriod(selectedPeriodIndex, {
+                      ...selectedPeriod,
+                      overrides: { ...selectedPeriod.overrides, dayHours: parseFloat(e.target.value) || 0 },
+                    })}
+                  />
+                </div>
+                <div className="settings-row">
+                  <label>{t.regularStartTime}</label>
+                  <input
+                    type="time"
+                    aria-label={t.regularStartTime}
+                    value={selectedPeriod.overrides.dayStart ?? s.dayStart}
+                    step={Math.max(1, Math.floor((selectedPeriod.overrides.timeStepMin ?? s.timeStepMin) || 1)) * 60}
+                    onChange={e => updatePeriod(selectedPeriodIndex, {
+                      ...selectedPeriod,
+                      overrides: { ...selectedPeriod.overrides, dayStart: e.target.value },
+                    })}
+                  />
+                </div>
+                <div className="settings-row">
+                  <label>{t.defaultBreak} ({t.minutes})</label>
+                  <input
+                    type="number"
+                    aria-label={t.defaultBreak}
+                    value={selectedPeriod.overrides.breakMin ?? s.breakMin}
+                    min={0}
+                    max={480}
+                    step={1}
+                    onChange={e => updatePeriod(selectedPeriodIndex, {
+                      ...selectedPeriod,
+                      overrides: { ...selectedPeriod.overrides, breakMin: parseInt(e.target.value) || 0 },
+                    })}
+                  />
+                </div>
+                <div className="settings-row">
+                  <label>{t.timeStep} ({t.minutes})</label>
+                  <input
+                    type="number"
+                    aria-label={t.timeStep}
+                    value={selectedPeriod.overrides.timeStepMin ?? s.timeStepMin}
+                    min={1}
+                    max={120}
+                    step={1}
+                    onChange={e => updatePeriod(selectedPeriodIndex, {
+                      ...selectedPeriod,
+                      overrides: { ...selectedPeriod.overrides, timeStepMin: parseInt(e.target.value) || 1 },
+                    })}
+                  />
+                </div>
+                <div className="row" style={{ justifyContent: "flex-end" }}>
+                  <button
+                    className="btn sm"
+                    type="button"
+                    onClick={handleRemoveSelectedPeriod}
+                  >
+                    {t.removeSettingsPeriod}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mono small muted settings-period-empty">{t.settingsPeriodNone}</div>
+            )}
+          </div>
         </div>
 
-        <div className="row gap-8 mt-12" style={{ justifyContent: "flex-end" }}>
+        <div className="settings-modal-actions row gap-8">
           <button className="btn sm" onClick={onClose}>{t.cancel}</button>
           <button
             className="btn sm primary"

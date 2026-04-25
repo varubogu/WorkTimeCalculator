@@ -307,6 +307,20 @@ h3 { font-size: 18px; line-height: 1.2; }
   padding: 5px 9px;
 }
 
+.btn.icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.btn.icon-btn .icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 /* Legend */
 .legend {
   display: flex;

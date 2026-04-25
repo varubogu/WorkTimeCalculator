@@ -1,5 +1,6 @@
 import type { Lang, Translations } from "../types";
 import DropdownActionButton from "./DropdownActionButton";
+import { DownloadIcon, SettingsIcon, UploadIcon } from "./icons";
 
 interface MenuItem {
   label: string;
@@ -47,10 +48,12 @@ export default function AppHeader({
           <option value="ja">JA 日本語</option>
           <option value="en">EN English</option>
         </select>
-        <DropdownActionButton label={t.import} items={importItems} />
-        <DropdownActionButton label={t.export} items={exportItems} />
+        <DropdownActionButton label={t.import} items={importItems} icon={<UploadIcon />} iconOnly />
+        <DropdownActionButton label={t.export} items={exportItems} icon={<DownloadIcon />} iconOnly />
         <button className="btn sm" onClick={onDark}>{dark ? "☀" : "☾"}</button>
-        <button className="btn sm" onClick={onSettings}>⚙ {t.settings}</button>
+        <button className="btn sm icon-btn" onClick={onSettings} aria-label={t.settings} title={t.settings}>
+          <SettingsIcon />
+        </button>
       </div>
     </div>
   );

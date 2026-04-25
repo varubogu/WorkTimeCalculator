@@ -6,8 +6,8 @@
 
 | コンポーネント | 役割 |
 |----------------|------|
-| [AppHeader](#appheader) | 上部ヘッダ：ブランド・言語切替・ダーク・設定ボタン |
-| [Sidebar](#sidebar) | 左サイドバー：年合計・月別進捗・エクスポート |
+| [AppHeader](#appheader) | 上部ヘッダ：ブランド・言語切替・読み込み・書き出し・ダーク・設定ボタン |
+| [Sidebar](#sidebar) | 左サイドバー：年合計・月別進捗 |
 | [MonthCalendar](#monthcalendar) | メインの月カレンダー |
 | [YearTimelineChart](#yeartimelinechart) | 年間の月別折れ線チャート |
 | [RangeProgress](#rangeprogress) | 目標範囲 / 実績のプログレスバー |
@@ -22,7 +22,7 @@
 
 [src/components/AppHeader.tsx](../src/components/AppHeader.tsx)
 
-アプリ上部のヘッダ。ブランド表示と、言語切替・ダークモード切替・設定モーダル起動のコントロール。
+アプリ上部のヘッダ。ブランド表示と、言語切替・読み込み・書き出し・ダークモード切替・設定モーダル起動のコントロール。読み込み・書き出し・設定はアイコンボタンで表示する。
 
 **Props**
 
@@ -41,7 +41,7 @@
 
 [src/components/Sidebar.tsx](../src/components/Sidebar.tsx)
 
-デスクトップ時のみ表示される左サイドバー。年合計・年目標プログレス・月別リスト・エクスポートボタンを持つ。
+デスクトップ時のみ表示される左サイドバー。年合計・年目標プログレス・月別リストを持つ。ファイルの読み込み・書き出しはヘッダのアイコンボタンに集約する。
 
 **Props**
 
@@ -57,7 +57,7 @@
 **挙動**
 
 - 月ドット色: 月合計が `monthTargetMin` 未満なら warn、`monthTargetMax` 超過なら bad、範囲内なら ok。
-- エクスポート: CSV / JSON を [utils.ts](../src/utils.ts) の `exportCSV` / `exportJSON` で生成。
+- 月クリック: `onPickMonth` で選択月を切り替える。
 
 ---
 

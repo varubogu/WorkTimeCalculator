@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 interface MenuItem {
   label: string;
@@ -9,9 +10,11 @@ interface Props {
   label: string;
   items: MenuItem[];
   align?: "left" | "right";
+  icon?: ReactNode;
+  iconOnly?: boolean;
 }
 
-export default function DropdownActionButton({ label, items, align = "right" }: Props) {
+export default function DropdownActionButton({ label, items, align = "right", icon, iconOnly = false }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,12 +43,16 @@ export default function DropdownActionButton({ label, items, align = "right" }: 
     <div ref={rootRef} className="dropdown-action">
       <button
         type="button"
-        className="btn sm"
+        className={`btn sm ${iconOnly ? "icon-btn" : ""}`}
         onClick={() => setOpen(prev => !prev)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={iconOnly ? label : undefined}
+        title={iconOnly ? label : undefined}
       >
-        {label} ▾
+        {icon}
+        {!iconOnly && label}
+        {!iconOnly && <span aria-hidden="true">▾</span>}
       </button>
       {open && (
         <div className={`dropdown-menu ${align === "left" ? "left" : "right"}`} role="menu">

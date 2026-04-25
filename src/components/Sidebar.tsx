@@ -1,6 +1,5 @@
 import type { MonthData, Settings, Translations } from "../types";
 import { fmtH, fmtRange, sumHours, sumOvertimeHours } from "../utils";
-import { exportCSV, exportJSON } from "../utils";
 import RangeProgress from "./RangeProgress";
 
 interface Props {
@@ -71,13 +70,6 @@ export default function Sidebar({ year, monthIdx, monthsData, settings, t, onPic
             </div>
           );
         })}
-      </div>
-      <div className="sketch-divider" />
-      <div className="col gap-4">
-        <button className="btn sm" style={{ justifyContent: "center" }}
-          onClick={() => exportCSV(monthsData, year)}>⤓ CSV</button>
-        <button className="btn sm" style={{ justifyContent: "center" }}
-          onClick={() => exportJSON(monthsData, year)}>⤓ JSON</button>
       </div>
     </div>
   );

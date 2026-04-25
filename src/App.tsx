@@ -37,7 +37,6 @@ import {
 } from "./utils";
 
 import AppHeader       from "./components/AppHeader";
-import DropdownActionButton from "./components/DropdownActionButton";
 import Sidebar         from "./components/Sidebar";
 import MonthCalendar   from "./components/MonthCalendar";
 import YearTimelineChart from "./components/YearTimelineChart";
@@ -507,7 +506,6 @@ export default function App() {
             <div className="row between mb-12" style={{ alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <ViewTabs view={view} setView={setView} lang={lang} />
               <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-                <DropdownActionButton label={t.export} items={exportMenuItems} />
                 <button className="btn sm" onClick={() => setYear(y => y - 1)}>← {year - 1}</button>
                 <button className="btn sm" onClick={() => setMonthIdx(m => Math.max(0, m - 1))}>‹ {t.prev}</button>
                 <button className="btn sm" onClick={() => setMonthIdx(m => Math.min(11, m + 1))}>{t.next} ›</button>
@@ -544,16 +542,11 @@ export default function App() {
           <div className="caveat mb-8" style={{ fontSize: 18 }}>{year} · {t.allMonths}</div>
           <MobileMonthGrid monthsData={monthsData} monthIdx={monthIdx}
             settings={settings} t={t} onPickMonth={setMonthIdx} />
-          <div className="sketch-divider" />
           {missingSettingsDate && (
             <div className="sketch-box warning-box mb-12">
               {t.settingsPeriodMissing} {missingSettingsDate}
             </div>
           )}
-          <div className="row gap-4">
-            <DropdownActionButton label={t.import} items={importMenuItems} align="left" />
-            <DropdownActionButton label={t.export} items={exportMenuItems} align="left" />
-          </div>
         </div>
       </div>
 
