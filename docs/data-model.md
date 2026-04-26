@@ -31,6 +31,8 @@ interface Entry {
 ### `Settings` — アプリ設定
 
 ```ts
+type ThemePreference = "light" | "dark" | "system";
+
 interface Settings {
   dayHours:       number;  // 1 日の定時時間（時間）
   dayStart:       string;  // 定時開始時刻 "HH:MM"
@@ -46,7 +48,8 @@ interface Settings {
   breakMin:       number;  // デフォルト休憩（分）
   showHolidays:   boolean; // 祝日自動反映
   lang:           Lang;    // "ja" | "en"
-  dark:           boolean; // ダークモード
+  theme:          ThemePreference; // "light" | "dark" | "system"
+  dark:           boolean; // 現在解決されたダークモード
 }
 ```
 
@@ -56,7 +59,8 @@ interface Settings {
 interface SettingsPreferences {
   hourDisplay: HourDisplay; // "clock" | "decimal"
   lang:        Lang;        // "ja" | "en"
-  dark:        boolean;     // ダークモード
+  theme:       ThemePreference; // "light" | "dark" | "system"
+  dark:        boolean;     // 現在解決されたダークモード
 }
 ```
 
@@ -87,7 +91,7 @@ interface PeriodSettings {
 
 `*` は必須で、どの日付キーよりも過去にある初期設定として扱います。`YYYY-MM-DD` キーの設定は、その適用開始日から次の適用開始日の前日まで有効です。次の適用開始日がない場合は未来方向へ継続します。キーは一意なので、同じ適用開始日を複数登録することはできません。
 
-期間設定は差分ではなく完全な `PeriodSettings` として保存します。`hourDisplay` / `lang` / `dark` は期間別ではなく `SettingsPreferences` に保存されます。
+期間設定は差分ではなく完全な `PeriodSettings` として保存します。`hourDisplay` / `lang` / `theme` / `dark` は期間別ではなく `SettingsPreferences` に保存されます。
 
 デフォルト値（`defaultSettings()`）:
 
@@ -107,6 +111,7 @@ interface PeriodSettings {
 | `breakMin` | 60 |
 | `showHolidays` | `true` |
 | `lang` | `"ja"` |
+| `theme` | `"system"` |
 | `dark` | `false` |
 
 ### `DayData` — ランタイム上の日データ
@@ -261,6 +266,7 @@ JSON / YAML 共通構造:
   "preferences": {
     "hourDisplay": "clock",
     "lang": "ja",
+    "theme": "system",
     "dark": false
   },
   "periods": {

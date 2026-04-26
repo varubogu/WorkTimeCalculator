@@ -31,8 +31,10 @@
 | `t` | `Translations` | i18n 辞書 |
 | `lang` | `Lang` (`"ja" \| "en"`) | 現在の言語 |
 | `onLang` | `(lang: Lang) => void` | 言語切替 |
+| `theme` | `ThemePreference` (`"light" \| "dark" \| "system"`) | 保存中のテーマ指定 |
 | `dark` | `boolean` | ダーク有効かどうか |
 | `onDark` | `() => void` | ダークトグル |
+| `onTheme` | `(theme: ThemePreference) => void` | テーマ指定の変更 |
 | `onSettings` | `() => void` | 設定モーダルを開く |
 | `importItems` | `{ label: string; onSelect: () => void }[]` | 読み込みメニュー項目 |
 | `exportItems` | `{ label: string; onSelect: () => void }[]` | 書き出しメニュー項目 |

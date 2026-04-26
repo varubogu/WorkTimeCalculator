@@ -46,10 +46,11 @@ export interface Settings {
   breakMin: number;
   showHolidays: boolean;
   lang: Lang;
+  theme: ThemePreference;
   dark: boolean;
 }
 
-export type SettingsPreferences = Pick<Settings, "hourDisplay" | "lang" | "dark">;
+export type SettingsPreferences = Pick<Settings, "hourDisplay" | "lang" | "theme" | "dark">;
 
 export type PeriodSettings = Pick<
   Settings,
@@ -104,11 +105,16 @@ export type HourDisplay = "clock" | "decimal";
 
 export type Lang = "ja" | "en";
 
+export type ThemePreference = "light" | "dark" | "system";
+
 export interface Translations {
   brand: string;
   tagline: string;
   lang: string;
   dark: string;
+  themeLight: string;
+  themeDark: string;
+  themeSystem: string;
   menu: string;
   settings: string;
   export: string;

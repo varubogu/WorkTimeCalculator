@@ -58,10 +58,54 @@ describe("App bulk regular fill", () => {
 
     const desktop = document.querySelector(".desktop-only") as HTMLElement;
     fireEvent.contextMenu(within(desktop).getByRole("button", { name: "定時を一括入力" }));
-    fireEvent.click(within(desktop).getByRole("menuitem", { name: "全て入力（入力済みのものを上書き）" }));
+    fireEvent.click(within(desktop).getByRole("menuitem", { name: "全て定時入力（入力済みのものを上書き）" }));
 
     expect(confirmSpy).toHaveBeenCalledWith("入力済みの日があります。上書きしますか？");
     expect(readEntry("2026-04-01")).toMatchObject({ start: "09:00", end: "18:00", brk: 60, vac: false });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+});
+
+describe("App theme", () => {
+  function mockSystemTheme(matches: boolean) {
+    const mediaQuery = {
+      matches,
+      media: "(prefers-color-scheme: dark)",
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    };
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue(mediaQuery));
+  }
+
+  afterEach(() => {
+    document.body.classList.remove("dark");
+    localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it("設定未保存の初回表示はシステムテーマを参照する", () => {
+    mockSystemTheme(true);
+
+    render(<App />);
+
+    expect(document.body).toHaveClass("dark");
+  });
+
+  it("通常クリック後は明示テーマとして保存する", () => {
+    mockSystemTheme(true);
+    render(<App />);
+
+    const header = document.querySelector(".app-header") as HTMLElement;
+    fireEvent.click(within(header).getByRole("button", { name: "ダーク" }));
+
+    expect(document.body).not.toHaveClass("dark");
+    expect(JSON.parse(localStorage.getItem("wtc_settings") ?? "{}")).toMatchObject({
+      theme: "light",
+      dark: false,
+    });
   });
 });

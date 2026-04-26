@@ -59,7 +59,7 @@ WorkTimeCalculator/
                         │ props / callbacks
 ┌───────────────────────┴────────────────────────────────┐
 │  アプリ状態（App.tsx）                                  │
-│  settings, lang, dark, year, monthIdx, editDay...      │
+│  settings, lang, theme, dark, year, monthIdx, editDay...│
 └───────────────────────┬────────────────────────────────┘
                         │
         ┌───────────────┼────────────────┐

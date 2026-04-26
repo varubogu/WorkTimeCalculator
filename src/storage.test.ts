@@ -67,10 +67,20 @@ describe("storage helpers", () => {
   });
 
   it("設定を保存してマージ済み設定として読み込む", () => {
-    const settings: Settings = { ...defaultSettings(), lang: "en", dark: true, hourDisplay: "decimal" };
+    const settings: Settings = { ...defaultSettings(), lang: "en", theme: "dark", dark: true, hourDisplay: "decimal" };
     saveSettings(settings);
 
-    expect(loadSettings()).toMatchObject({ lang: "en", dark: true, hourDisplay: "decimal" });
+    expect(loadSettings()).toMatchObject({ lang: "en", theme: "dark", dark: true, hourDisplay: "decimal" });
+  });
+
+  it("設定未保存時のテーマ指定はシステムテーマにする", () => {
+    expect(loadSettings()).toMatchObject({ theme: "system" });
+  });
+
+  it("旧形式の dark 設定は明示テーマとして読み込む", () => {
+    localStorage.setItem("wtc_settings", JSON.stringify({ lang: "ja", dark: true, hourDisplay: "clock" }));
+
+    expect(loadSettings()).toMatchObject({ theme: "dark", dark: true });
   });
 
   it("有効期間付き設定を保存して読み込む", () => {

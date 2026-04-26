@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import type { DayData, Entry, Lang, MonthData, Settings, SettingsPeriodMap, SettingsPreferences, Translations } from "./types";
+import type { DayData, Entry, Lang, MonthData, Settings, SettingsPeriodMap, SettingsPreferences, ThemePreference, Translations } from "./types";
 import I18N from "./i18n";
 import {
   ensureSettingsPeriods,
@@ -53,6 +53,17 @@ type View = "calendar" | "chart";
 type BulkRegularMode = "empty" | "overwrite";
 
 const BULK_REGULAR_LONG_PRESS_MS = 550;
+
+function getSystemPrefersDark(): boolean {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function resolveThemeDark(theme: ThemePreference, systemDark: boolean): boolean {
+  if (theme === "system") return systemDark;
+  return theme === "dark";
+}
 
 function ViewTabs({ view, setView, t }: { view: View; setView: (v: View) => void; t: Translations }) {
   return (
@@ -118,7 +129,7 @@ export default function App() {
   const [preferences,  setPreferences]  = useState<SettingsPreferences>(initPreferences);
   const [settingsPeriods, setSettingsPeriods] = useState<SettingsPeriodMap>(initSettingsPeriods);
   const [lang,         setLang]         = useState<Lang>(initPreferences.lang);
-  const [dark,         setDark]         = useState(initPreferences.dark);
+  const [systemDark,   setSystemDark]   = useState(getSystemPrefersDark);
   const [year,         setYear]         = useState(today.getFullYear());
   const [monthIdx,     setMonthIdx]     = useState(today.getMonth());
   const [view,         setView]         = useState<View>("calendar");
@@ -134,11 +145,21 @@ export default function App() {
   const bulkRegularLongPressTimerRef = useRef<number | null>(null);
   const bulkRegularLongPressTriggeredRef = useRef(false);
   const [bulkRegularMenuOpen, setBulkRegularMenuOpen] = useState(false);
+  const dark = resolveThemeDark(preferences.theme, systemDark);
 
   useEffect(() => {
     document.body.classList.toggle("dark", dark);
     document.documentElement.lang = lang;
   }, [dark, lang]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);
+    setSystemDark(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   useEffect(() => {
     if (!bulkRegularMenuOpen) return;
@@ -162,21 +183,25 @@ export default function App() {
   }, [bulkRegularMenuOpen]);
 
   const t = I18N[lang];
+  const effectivePreferences = useMemo(
+    () => ({ ...preferences, dark }),
+    [preferences, dark],
+  );
   const currentMonthSettings = useMemo(
-    () => resolveSettingsForDate(preferences, settingsPeriods, isoDate(year, monthIdx, 1)),
-    [preferences, settingsPeriods, year, monthIdx],
+    () => resolveSettingsForDate(effectivePreferences, settingsPeriods, isoDate(year, monthIdx, 1)),
+    [effectivePreferences, settingsPeriods, year, monthIdx],
   );
   const currentMonthSettingsPeriodKey = useMemo(
     () => resolveSettingsPeriodKeyForDate(settingsPeriods, isoDate(year, monthIdx, 1)),
     [settingsPeriods, year, monthIdx],
   );
   const yearSettings = useMemo(
-    () => resolveSettingsForDate(preferences, settingsPeriods, isoDate(year, 0, 1)),
-    [preferences, settingsPeriods, year],
+    () => resolveSettingsForDate(effectivePreferences, settingsPeriods, isoDate(year, 0, 1)),
+    [effectivePreferences, settingsPeriods, year],
   );
   const monthlySettings = useMemo(
-    () => Array.from({ length: 12 }, (_, month) => resolveSettingsForDate(preferences, settingsPeriods, isoDate(year, month, 1))),
-    [preferences, settingsPeriods, year],
+    () => Array.from({ length: 12 }, (_, month) => resolveSettingsForDate(effectivePreferences, settingsPeriods, isoDate(year, month, 1))),
+    [effectivePreferences, settingsPeriods, year],
   );
   const settings = currentMonthSettings;
 
@@ -197,9 +222,9 @@ export default function App() {
   }, [year, settingsPeriods]);
 
   const monthsData = useMemo(
-    () => buildMonthsData(year, preferences, settingsPeriods, holidayDates ?? undefined),
+    () => buildMonthsData(year, effectivePreferences, settingsPeriods, holidayDates ?? undefined),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [year, preferences, settingsPeriods, holidayDates, tick],
+    [year, effectivePreferences, settingsPeriods, holidayDates, tick],
   );
 
   const currentMonthData = monthsData[monthIdx].data;
@@ -209,12 +234,14 @@ export default function App() {
   const yearOvertimeTotal = monthsData.reduce((s, m) => s + sumOvertimeHours(m.data, yearSettings.dayHours), 0);
 
   const handleSaveSettings = (newPreferences: SettingsPreferences, newPeriods: SettingsPeriodMap) => {
-    const merged = mergeSettingsPreferences(newPreferences);
+    const merged = mergeSettingsPreferences({
+      ...newPreferences,
+      dark: resolveThemeDark(newPreferences.theme, systemDark),
+    });
     const normalizedPeriods = ensureSettingsPeriods({}, newPeriods);
     setPreferences(merged);
     setSettingsPeriods(normalizedPeriods);
     setLang(merged.lang);
-    setDark(merged.dark);
     saveSettings(merged);
     saveSettingsPeriods(normalizedPeriods);
     setSettingsOpen(false);
@@ -247,7 +274,7 @@ export default function App() {
       : targets;
 
     for (const day of fillTargets) {
-      const daySettings = resolveSettingsForDate(preferences, settingsPeriods, day.dateStr);
+      const daySettings = resolveSettingsForDate(effectivePreferences, settingsPeriods, day.dateStr);
       const totalMinutes = daySettings.dayHours * 60 + daySettings.breakMin;
       const end = addMinutesToTime(daySettings.dayStart, totalMinutes);
       if (!end) {
@@ -298,12 +325,18 @@ export default function App() {
     saveSettings(merged);
   };
 
-  const handleDark = () => {
-    const v = !dark;
-    setDark(v);
-    const merged = mergeSettingsPreferences({ ...preferences, dark: v });
+  const handleTheme = (theme: ThemePreference) => {
+    const merged = mergeSettingsPreferences({
+      ...preferences,
+      theme,
+      dark: resolveThemeDark(theme, systemDark),
+    });
     setPreferences(merged);
     saveSettings(merged);
+  };
+
+  const handleDark = () => {
+    handleTheme(dark ? "light" : "dark");
   };
 
   const downloadText = (filename: string, text: string, type: string) => {
@@ -356,11 +389,14 @@ export default function App() {
     }
 
     const ensuredPeriods = ensureSettingsPeriods({}, parsed.value.periods);
-    setPreferences(parsed.value.preferences);
+    const importedPreferences = mergeSettingsPreferences({
+      ...parsed.value.preferences,
+      dark: resolveThemeDark(parsed.value.preferences.theme, systemDark),
+    });
+    setPreferences(importedPreferences);
     setSettingsPeriods(ensuredPeriods);
-    setLang(parsed.value.preferences.lang);
-    setDark(parsed.value.preferences.dark);
-    saveSettings(parsed.value.preferences);
+    setLang(importedPreferences.lang);
+    saveSettings(importedPreferences);
     saveSettingsPeriods(ensuredPeriods);
     window.alert(`${t.fileImportSuccess}\n${t.settingsFile}`);
     setTick(n => n + 1);
@@ -388,7 +424,7 @@ export default function App() {
   };
 
   const exportSettings = (format: "json" | "yaml") => {
-    const text = serializeSettingsFile(createSettingsFile(preferences, settingsPeriods), format);
+    const text = serializeSettingsFile(createSettingsFile({ ...preferences, dark }, settingsPeriods), format);
     downloadText(
       `settings.${format === "json" ? "json" : "yaml"}`,
       text,
@@ -616,8 +652,10 @@ export default function App() {
           t={t}
           lang={lang}
           onLang={handleLang}
+          theme={preferences.theme}
           dark={dark}
           onDark={handleDark}
+          onTheme={handleTheme}
           onSettings={() => setSettingsOpen(true)}
           importItems={importMenuItems}
           exportItems={exportMenuItems}
@@ -646,7 +684,9 @@ export default function App() {
                 </label>
                 <button className="mobile-menu-row as-button" type="button" onClick={handleDark}>
                   <span>{t.dark}</span>
-                  <span className="mobile-menu-value">{dark ? "☀" : "☾"}</span>
+                  <span className="mobile-menu-value">
+                    {preferences.theme === "system" ? t.themeSystem : dark ? t.themeDark : t.themeLight}
+                  </span>
                 </button>
                 <button
                   className="mobile-menu-row as-button"
@@ -708,7 +748,7 @@ export default function App() {
 
       {editDay && (
         <DayModal dayObj={editDay} year={year} month={monthIdx}
-          settings={resolveSettingsForDate(preferences, settingsPeriods, editDay.dateStr)} t={t}
+          settings={resolveSettingsForDate(effectivePreferences, settingsPeriods, editDay.dateStr)} t={t}
           onSave={handleSaveDay} onClose={() => setEditDay(null)} />
       )}
       {settingsOpen && (

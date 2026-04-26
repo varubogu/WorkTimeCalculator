@@ -69,6 +69,7 @@ export function defaultSettings(): Settings {
     breakMin:                60,
     showHolidays:            true,
     lang:                    "ja",
+    theme:                   "system",
     dark:                    false,
   };
 }
@@ -78,6 +79,7 @@ export function defaultSettingsPreferences(): SettingsPreferences {
   return {
     hourDisplay: settings.hourDisplay,
     lang: settings.lang,
+    theme: settings.theme,
     dark: settings.dark,
   };
 }
@@ -92,9 +94,15 @@ export function defaultSettingsPeriods(): SettingsPeriodMap {
 
 export function settingsToPreferences(settings: Partial<Settings>): SettingsPreferences {
   const d = defaultSettingsPreferences();
+  const theme = settings.theme === "light" || settings.theme === "dark" || settings.theme === "system"
+    ? settings.theme
+    : typeof settings.dark === "boolean"
+      ? settings.dark ? "dark" : "light"
+      : d.theme;
   return {
     hourDisplay: settings.hourDisplay === "decimal" ? "decimal" : d.hourDisplay,
     lang: settings.lang === "en" ? "en" : d.lang,
+    theme,
     dark: typeof settings.dark === "boolean" ? settings.dark : d.dark,
   };
 }
@@ -142,6 +150,11 @@ export function mergeSettings(s: Partial<Settings>): Settings {
     breakMin:                finiteNumberOr(s.breakMin, d.breakMin),
     showHolidays:            typeof s.showHolidays === "boolean" ? s.showHolidays : d.showHolidays,
     lang:                    s.lang ?? d.lang,
+    theme:                   s.theme === "light" || s.theme === "dark" || s.theme === "system"
+      ? s.theme
+      : typeof s.dark === "boolean"
+        ? s.dark ? "dark" : "light"
+        : d.theme,
     dark:                    typeof s.dark === "boolean" ? s.dark : d.dark,
   };
 }

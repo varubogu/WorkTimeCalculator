@@ -19,6 +19,7 @@
       "required": [
         "hourDisplay",
         "lang",
+        "theme",
         "dark"
       ],
       "properties": {
@@ -27,6 +28,9 @@
         },
         "lang": {
           "enum": ["ja", "en"]
+        },
+        "theme": {
+          "enum": ["light", "dark", "system"]
         },
         "dark": {
           "type": "boolean"

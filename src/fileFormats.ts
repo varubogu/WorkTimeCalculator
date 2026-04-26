@@ -66,11 +66,13 @@ export const SETTINGS_JSON_SCHEMA = {
       required: [
         "hourDisplay",
         "lang",
+        "theme",
         "dark",
       ],
       properties: {
         hourDisplay: { enum: ["clock", "decimal"] },
         lang: { enum: ["ja", "en"] },
+        theme: { enum: ["light", "dark", "system"] },
         dark: { type: "boolean" },
       },
     },
