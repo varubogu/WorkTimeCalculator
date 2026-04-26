@@ -35,7 +35,8 @@ public/                # Optional Vite static assets copied as-is
 
 All state is in `localStorage` (never sent to the server):
 - Entry keys: `wtc_YYYY-MM-DD` → `Entry`
-- Settings key: `wtc_settings` → `Settings`
+- Settings key: `wtc_settings` → `SettingsPreferences`
+- Settings periods key: `wtc_settings_periods` → `SettingsPeriodMap`
 
 `App.tsx` holds UI state in memory; persisted work entries and settings are read through `src/storage.ts`.
 
@@ -48,8 +49,8 @@ All state is in `localStorage` (never sent to the server):
 
 ### Adding a new setting
 
-1. Add the field to `Settings` in `src/types.ts`.
-2. Extend `defaultSettings()` and `mergeSettings()` in `src/storage.ts`.
+1. Add the field to `Settings` in `src/types.ts`; also add it to `PeriodSettings` if it must vary by effective start date, or `SettingsPreferences` if it is global.
+2. Extend `defaultSettings()`, `mergeSettings()`, and the relevant preference/period merge helpers in `src/storage.ts`.
 3. Add the UI row in `src/components/SettingsModal.tsx`.
 4. Add labels to both languages in `src/i18n.ts`.
 5. Use the value through `settings` in `src/App.tsx` or a component prop.

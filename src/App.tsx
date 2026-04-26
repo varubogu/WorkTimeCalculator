@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import type { DayData, Entry, Lang, MonthData, Settings, SettingsPeriod, Translations } from "./types";
+import type { DayData, Entry, Lang, MonthData, Settings, SettingsPeriodMap, SettingsPreferences, Translations } from "./types";
 import I18N from "./i18n";
 import {
   ensureSettingsPeriods,
-  findFirstMissingSettingsDate,
+  hasAnyHolidayPeriod,
   isoDate,
   loadSettings,
   loadSettingsPeriods,
-  mergeSettings,
+  mergeSettingsPreferences,
   resolveSettingsForDate,
   saveSettings,
   saveSettingsPeriods,
@@ -64,15 +64,15 @@ function ViewTabs({ view, setView, t }: { view: View; setView: (v: View) => void
 
 // ── Mobile month grid ──────────────────────────────────
 function MobileMonthGrid({
-  monthsData, monthIdx, settings, t, onPickMonth,
+  monthsData, monthIdx, monthlySettings, t, onPickMonth,
 }: {
   monthsData: MonthData[];
   monthIdx: number;
-  settings: Settings;
+  monthlySettings: Settings[];
   t: (typeof I18N)[Lang];
   onPickMonth: (m: number) => void;
 }) {
-  function statusColor(tot: number) {
+  function statusColor(tot: number, settings: Settings) {
     return tot < settings.monthTargetMin ? "var(--accent-warn)"
       : tot > settings.monthTargetMax ? "var(--accent-bad)"
       : "var(--accent-ok)";
@@ -81,6 +81,7 @@ function MobileMonthGrid({
     <div className="mobile-month-grid">
       {monthsData.map(({ m, data }) => {
         const tot = sumHours(data);
+        const settings = monthlySettings[m];
         return (
           <button
             key={m}
@@ -92,7 +93,7 @@ function MobileMonthGrid({
               <span className="caveat" style={{ fontSize: 16 }}>{t.monthsShort[m]}</span>
               <div style={{
                 width: 8, height: 8, borderRadius: "50%", border: "1.5px solid var(--ink)",
-                background: statusColor(tot),
+                background: statusColor(tot, settings),
               }} />
             </div>
             <div className="mono" style={{ fontSize: 10 }}>{fmtH(tot, settings.hourDisplay)}</div>
@@ -106,13 +107,13 @@ function MobileMonthGrid({
 // ── App ────────────────────────────────────────────────
 export default function App() {
   const today = new Date();
-  const initSettings = loadSettings();
-  const initSettingsPeriods = ensureSettingsPeriods(initSettings, loadSettingsPeriods());
+  const initPreferences = loadSettings();
+  const initSettingsPeriods = ensureSettingsPeriods({}, loadSettingsPeriods());
 
-  const [settings,     setSettings]     = useState<Settings>(initSettings);
-  const [settingsPeriods, setSettingsPeriods] = useState<SettingsPeriod[]>(initSettingsPeriods);
-  const [lang,         setLang]         = useState<Lang>(initSettings.lang);
-  const [dark,         setDark]         = useState(initSettings.dark);
+  const [preferences,  setPreferences]  = useState<SettingsPreferences>(initPreferences);
+  const [settingsPeriods, setSettingsPeriods] = useState<SettingsPeriodMap>(initSettingsPeriods);
+  const [lang,         setLang]         = useState<Lang>(initPreferences.lang);
+  const [dark,         setDark]         = useState(initPreferences.dark);
   const [year,         setYear]         = useState(today.getFullYear());
   const [monthIdx,     setMonthIdx]     = useState(today.getMonth());
   const [view,         setView]         = useState<View>("calendar");
@@ -131,10 +132,23 @@ export default function App() {
   }, [dark, lang]);
 
   const t = I18N[lang];
+  const currentMonthSettings = useMemo(
+    () => resolveSettingsForDate(preferences, settingsPeriods, isoDate(year, monthIdx, 1)),
+    [preferences, settingsPeriods, year, monthIdx],
+  );
+  const yearSettings = useMemo(
+    () => resolveSettingsForDate(preferences, settingsPeriods, isoDate(year, 0, 1)),
+    [preferences, settingsPeriods, year],
+  );
+  const monthlySettings = useMemo(
+    () => Array.from({ length: 12 }, (_, month) => resolveSettingsForDate(preferences, settingsPeriods, isoDate(year, month, 1))),
+    [preferences, settingsPeriods, year],
+  );
+  const settings = currentMonthSettings;
 
   useEffect(() => {
     let cancelled = false;
-    if (!settings.showHolidays) {
+    if (!hasAnyHolidayPeriod(settingsPeriods)) {
       setHolidayDates(null);
       return;
     }
@@ -146,28 +160,24 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [year, settings.showHolidays]);
+  }, [year, settingsPeriods]);
 
   const monthsData = useMemo(
-    () => buildMonthsData(year, settings, settingsPeriods, holidayDates ?? undefined),
+    () => buildMonthsData(year, preferences, settingsPeriods, holidayDates ?? undefined),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [year, settings, settingsPeriods, holidayDates, tick],
-  );
-  const missingSettingsDate = useMemo(
-    () => findFirstMissingSettingsDate(settingsPeriods, isoDate(year, 0, 1), isoDate(year, 11, 31)),
-    [settingsPeriods, year],
+    [year, preferences, settingsPeriods, holidayDates, tick],
   );
 
   const currentMonthData = monthsData[monthIdx].data;
   const currentTotal     = sumHours(currentMonthData);
-  const currentOvertimeTotal = sumOvertimeHours(currentMonthData, settings.dayHours);
+  const currentOvertimeTotal = sumOvertimeHours(currentMonthData, currentMonthSettings.dayHours);
   const yearTotal        = monthsData.reduce((s, m) => s + sumHours(m.data), 0);
-  const yearOvertimeTotal = monthsData.reduce((s, m) => s + sumOvertimeHours(m.data, settings.dayHours), 0);
+  const yearOvertimeTotal = monthsData.reduce((s, m) => s + sumOvertimeHours(m.data, yearSettings.dayHours), 0);
 
-  const handleSaveSettings = (newS: Settings, newPeriods: SettingsPeriod[]) => {
-    const merged = mergeSettings(newS);
-    const normalizedPeriods = ensureSettingsPeriods(merged, newPeriods);
-    setSettings(merged);
+  const handleSaveSettings = (newPreferences: SettingsPreferences, newPeriods: SettingsPeriodMap) => {
+    const merged = mergeSettingsPreferences(newPreferences);
+    const normalizedPeriods = ensureSettingsPeriods({}, newPeriods);
+    setPreferences(merged);
     setSettingsPeriods(normalizedPeriods);
     setLang(merged.lang);
     setDark(merged.dark);
@@ -178,10 +188,6 @@ export default function App() {
   };
 
   const handleDayClick = (dayObj: DayData) => {
-    if (dayObj.hasMissingSettings) {
-      window.alert(`${t.settingsPeriodMissing}\n${dayObj.dateStr}`);
-      return;
-    }
     setEditDay(dayObj);
   };
 
@@ -197,11 +203,7 @@ export default function App() {
     if (hasExisting && !window.confirm(t.bulkRegularOverwriteConfirm)) return;
 
     for (const day of targets) {
-      const daySettings = resolveSettingsForDate(settings, settingsPeriods, day.dateStr);
-      if (!daySettings) {
-        window.alert(`${t.settingsPeriodMissing}\n${day.dateStr}`);
-        return;
-      }
+      const daySettings = resolveSettingsForDate(preferences, settingsPeriods, day.dateStr);
       const totalMinutes = daySettings.dayHours * 60 + daySettings.breakMin;
       const end = addMinutesToTime(daySettings.dayStart, totalMinutes);
       if (!end) {
@@ -220,16 +222,16 @@ export default function App() {
 
   const handleLang = (v: Lang) => {
     setLang(v);
-    const merged = { ...settings, lang: v };
-    setSettings(merged);
+    const merged = mergeSettingsPreferences({ ...preferences, lang: v });
+    setPreferences(merged);
     saveSettings(merged);
   };
 
   const handleDark = () => {
     const v = !dark;
     setDark(v);
-    const merged = { ...settings, dark: v };
-    setSettings(merged);
+    const merged = mergeSettingsPreferences({ ...preferences, dark: v });
+    setPreferences(merged);
     saveSettings(merged);
   };
 
@@ -282,12 +284,12 @@ export default function App() {
       return;
     }
 
-    const ensuredPeriods = ensureSettingsPeriods(parsed.value.baseSettings, parsed.value.periods);
-    setSettings(parsed.value.baseSettings);
+    const ensuredPeriods = ensureSettingsPeriods({}, parsed.value.periods);
+    setPreferences(parsed.value.preferences);
     setSettingsPeriods(ensuredPeriods);
-    setLang(parsed.value.baseSettings.lang);
-    setDark(parsed.value.baseSettings.dark);
-    saveSettings(parsed.value.baseSettings);
+    setLang(parsed.value.preferences.lang);
+    setDark(parsed.value.preferences.dark);
+    saveSettings(parsed.value.preferences);
     saveSettingsPeriods(ensuredPeriods);
     window.alert(`${t.fileImportSuccess}\n${t.settingsFile}`);
     setTick(n => n + 1);
@@ -315,7 +317,7 @@ export default function App() {
   };
 
   const exportSettings = (format: "json" | "yaml") => {
-    const text = serializeSettingsFile(createSettingsFile(settings, settingsPeriods), format);
+    const text = serializeSettingsFile(createSettingsFile(preferences, settingsPeriods), format);
     downloadText(
       `settings.${format === "json" ? "json" : "yaml"}`,
       text,
@@ -407,11 +409,11 @@ export default function App() {
       <div className="row between mb-8" style={{ alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
           <h2 style={{ fontSize: 28 }}>{year} · {t.year} {t.progress}</h2>
-          <span className="mono muted small">{t.yearTarget}: {fmtRange(settings.yearTargetMin, settings.yearTargetMax, settings.hourDisplay)}</span>
+          <span className="mono muted small">{t.yearTarget}: {fmtRange(yearSettings.yearTargetMin, yearSettings.yearTargetMax, settings.hourDisplay)}</span>
         </div>
         <div className="row gap-8" style={{ alignItems: "center" }}>
           <span className="caveat" style={{ fontSize: 22 }}>{fmtH(yearTotal, settings.hourDisplay)}</span>
-          <DeltaChip value={yearTotal} min={settings.yearTargetMin} max={settings.yearTargetMax}
+          <DeltaChip value={yearTotal} min={yearSettings.yearTargetMin} max={yearSettings.yearTargetMax}
             hourDisplay={settings.hourDisplay} t={t} />
         </div>
       </div>
@@ -419,6 +421,7 @@ export default function App() {
         <YearTimelineChart
           monthsData={monthsData} year={year}
           targetMin={settings.monthTargetMin} targetMax={settings.monthTargetMax}
+          targetsByMonth={monthlySettings.map(monthSettings => ({ min: monthSettings.monthTargetMin, max: monthSettings.monthTargetMax }))}
           hourDisplay={settings.hourDisplay}
           currentMonthIdx={monthIdx} onPickMonth={setMonthIdx}
           height={280} t={t}
@@ -428,12 +431,12 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
           <h3 style={{ fontSize: 22 }}>{year} · {t.overtime} {t.progress}</h3>
           <span className="mono muted small">
-            {t.targetValue}: {fmtH(settings.yearOvertimeTargetMin, settings.hourDisplay)} / {t.limitValue}: {fmtH(settings.yearOvertimeTargetMax, settings.hourDisplay)}
+            {t.targetValue}: {fmtH(yearSettings.yearOvertimeTargetMin, settings.hourDisplay)} / {t.limitValue}: {fmtH(yearSettings.yearOvertimeTargetMax, settings.hourDisplay)}
           </span>
         </div>
         <div className="row gap-8" style={{ alignItems: "center" }}>
           <span className="caveat" style={{ fontSize: 20 }}>{fmtH(yearOvertimeTotal, settings.hourDisplay)}</span>
-          <DeltaChip value={yearOvertimeTotal} min={settings.yearOvertimeTargetMin} max={settings.yearOvertimeTargetMax}
+          <DeltaChip value={yearOvertimeTotal} min={yearSettings.yearOvertimeTargetMin} max={yearSettings.yearOvertimeTargetMax}
             hourDisplay={settings.hourDisplay} t={t} mode="ceiling" />
         </div>
       </div>
@@ -441,6 +444,7 @@ export default function App() {
         <YearTimelineChart
           monthsData={monthsData} year={year}
           targetMin={settings.monthOvertimeTargetMin} targetMax={settings.monthOvertimeTargetMax}
+          targetsByMonth={monthlySettings.map(monthSettings => ({ min: monthSettings.monthOvertimeTargetMin, max: monthSettings.monthOvertimeTargetMax }))}
           hourDisplay={settings.hourDisplay}
           currentMonthIdx={monthIdx} onPickMonth={setMonthIdx}
           height={240} t={t}
@@ -501,7 +505,7 @@ export default function App() {
                 <MobileMonthGrid
                   monthsData={monthsData}
                   monthIdx={monthIdx}
-                  settings={settings}
+                  monthlySettings={monthlySettings}
                   t={t}
                   onPickMonth={m => {
                     setMonthIdx(m);
@@ -540,7 +544,7 @@ export default function App() {
         {/* Desktop: 2-pane */}
         <div className="desktop-only" style={{ minHeight: 560, alignItems: "stretch" }}>
           <Sidebar year={year} monthIdx={monthIdx} monthsData={monthsData}
-            settings={settings} t={t} onPickMonth={setMonthIdx} />
+            settings={yearSettings} monthlySettings={monthlySettings} t={t} onPickMonth={setMonthIdx} />
           <div style={{ flex: 1, padding: 14, minWidth: 0 }}>
             <div className="row between mb-12" style={{ alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <ViewTabs view={view} setView={setView} t={t} />
@@ -570,18 +574,8 @@ export default function App() {
           </div>
           <ViewTabs view={view} setView={setView} t={t} />
           <div className="mt-12">
-            {missingSettingsDate && (
-              <div className="sketch-box warning-box mb-12">
-                {t.settingsPeriodMissing} {missingSettingsDate}
-              </div>
-            )}
             {view === "calendar" ? <CalendarView /> : <ChartView />}
           </div>
-          {missingSettingsDate && (
-            <div className="sketch-box warning-box mb-12">
-              {t.settingsPeriodMissing} {missingSettingsDate}
-            </div>
-          )}
         </div>
       </div>
 
@@ -591,11 +585,11 @@ export default function App() {
 
       {editDay && (
         <DayModal dayObj={editDay} year={year} month={monthIdx}
-          settings={resolveSettingsForDate(settings, settingsPeriods, editDay.dateStr) ?? settings} t={t}
+          settings={resolveSettingsForDate(preferences, settingsPeriods, editDay.dateStr)} t={t}
           onSave={handleSaveDay} onClose={() => setEditDay(null)} />
       )}
       {settingsOpen && (
-        <SettingsModal settings={settings} settingsPeriods={settingsPeriods} t={t}
+        <SettingsModal preferences={preferences} settingsPeriods={settingsPeriods} t={t}
           onSave={handleSaveSettings} onClose={() => setSettingsOpen(false)} />
       )}
       <input

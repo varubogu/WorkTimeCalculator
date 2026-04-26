@@ -1,28 +1,19 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import I18N from "../i18n";
-import { defaultSettings } from "../storage";
-import type { SettingsPeriod } from "../types";
+import { defaultSettings, defaultSettingsPreferences, defaultSettingsPeriods } from "../storage";
 import SettingsModal from "./SettingsModal";
 
 describe("SettingsModal", () => {
-  it("期間プルダウンで編集対象を切り替える", () => {
-    const periods: SettingsPeriod[] = [
-      {
-        effectiveFrom: null,
-        effectiveTo: "2026-04-30",
-        overrides: { dayHours: 7.5, dayStart: "08:30", breakMin: 45, timeStepMin: 30 },
-      },
-      {
-        effectiveFrom: "2026-05-01",
-        effectiveTo: "2026-05-31",
-        overrides: { dayHours: 6, dayStart: "10:00", breakMin: 30, timeStepMin: 15 },
-      },
-    ];
+  it("適用開始日プルダウンで編集対象を切り替える", () => {
+    const periods = {
+      "*": { ...defaultSettings(), dayHours: 7.5, dayStart: "08:30", breakMin: 45, timeStepMin: 30 },
+      "2026-05-01": { ...defaultSettings(), dayHours: 6, dayStart: "10:00", breakMin: 30, timeStepMin: 15 },
+    };
 
     render(
       <SettingsModal
-        settings={defaultSettings()}
+        preferences={defaultSettingsPreferences()}
         settingsPeriods={periods}
         t={I18N.ja}
         onSave={vi.fn()}
@@ -32,44 +23,64 @@ describe("SettingsModal", () => {
 
     expect(screen.getByLabelText("1日の定時時間")).toHaveValue(7.5);
 
-    fireEvent.change(screen.getByLabelText("編集する期間"), { target: { value: screen.getByRole("option", { name: "2026-05-01 ～ 2026-05-31" }).getAttribute("value") } });
+    fireEvent.change(screen.getByLabelText("編集する期間"), { target: { value: "2026-05-01" } });
 
     expect(screen.getByLabelText("1日の定時時間")).toHaveValue(6);
     expect(screen.getByLabelText("定時開始時刻")).toHaveValue("10:00");
   });
 
-  it("初期の null ～ null 期間に開始日を入れると期間を分割して保存できる", () => {
+  it("* 期間を編集して保存でき、終了日UIは表示しない", () => {
     const onSave = vi.fn();
 
     render(
       <SettingsModal
-        settings={defaultSettings()}
-        settingsPeriods={[]}
+        preferences={defaultSettingsPreferences()}
+        settingsPeriods={defaultSettingsPeriods()}
         t={I18N.ja}
         onSave={onSave}
         onClose={vi.fn()}
       />,
     );
 
-    expect(screen.getByLabelText("編集する期間")).toHaveDisplayValue("— ～ —");
-    expect(screen.getByLabelText("適用開始日")).toHaveValue("");
+    expect(screen.getByLabelText("編集する期間")).toHaveDisplayValue("*");
+    expect(screen.getByLabelText("適用開始日")).toHaveValue("*");
+    expect(screen.queryByLabelText("適用終了日")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("適用開始日"), { target: { value: "2026-06-01" } });
-    fireEvent.change(screen.getByLabelText("適用終了日"), { target: { value: "2026-06-30" } });
+    fireEvent.change(screen.getByLabelText("1日の定時時間"), { target: { value: "7.5" } });
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     expect(onSave).toHaveBeenCalledWith(
       expect.any(Object),
-      [
-        expect.objectContaining({
-          effectiveFrom: null,
-          effectiveTo: "2026-06-01",
-        }),
-        expect.objectContaining({
-          effectiveFrom: "2026-06-01",
-          effectiveTo: "2026-06-30",
-        }),
-      ],
+      expect.objectContaining({
+        "*": expect.objectContaining({ dayHours: 7.5 }),
+      }),
+    );
+  });
+
+  it("新しい適用開始日を追加して保存できる", () => {
+    const onSave = vi.fn();
+
+    render(
+      <SettingsModal
+        preferences={defaultSettingsPreferences()}
+        settingsPeriods={defaultSettingsPeriods()}
+        t={I18N.ja}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "期間を追加" }));
+    fireEvent.change(screen.getAllByLabelText("適用開始日")[0], { target: { value: "2026-06-01" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "期間を追加" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        "*": expect.any(Object),
+        "2026-06-01": expect.any(Object),
+      }),
     );
   });
 });

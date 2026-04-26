@@ -15,6 +15,7 @@ interface Props {
   year: number;
   targetMin: number;
   targetMax: number;
+  targetsByMonth?: { min: number; max: number }[];
   hourDisplay: HourDisplay;
   currentMonthIdx: number;
   onPickMonth: (m: number) => void;
@@ -25,7 +26,7 @@ interface Props {
 }
 
 export default function YearTimelineChart({
-  monthsData, year, targetMin, targetMax, hourDisplay,
+  monthsData, year, targetMin, targetMax, targetsByMonth, hourDisplay,
   currentMonthIdx, onPickMonth, t,
   mode = "total",
   regularDayHours = 8,
@@ -50,8 +51,10 @@ export default function YearTimelineChart({
   const innerH = H - padT - padB;
   const valueOf = (monthData: MonthData) =>
     mode === "overtime" ? sumOvertimeHours(monthData.data, regularDayHours) : sumHours(monthData.data);
+  const targetsForIndex = (index: number) => targetsByMonth?.[index] ?? { min: targetMin, max: targetMax };
 
-  const maxTot = Math.max(targetMax * 1.2, ...monthsData.map(valueOf), 20);
+  const maxTarget = Math.max(targetMax, ...(targetsByMonth?.map(target => target.max) ?? []));
+  const maxTot = Math.max(maxTarget * 1.2, ...monthsData.map(valueOf), 20);
   const maxY   = Math.ceil(maxTot / 20) * 20;
   const yTicks: number[] = [];
   for (let v = 0; v <= maxY; v += 40) yTicks.push(v);
@@ -86,13 +89,14 @@ export default function YearTimelineChart({
     setHover(best && bestD < innerW / 11 ? best : null);
   };
 
-  const statusOf = (tot: number) => {
+  const statusOf = (tot: number, index = currentMonthIdx) => {
+    const target = targetsForIndex(index);
     if (mode === "overtime") {
-      if (tot <= targetMin) return "ok";
-      if (tot <= targetMax) return "warn";
+      if (tot <= target.min) return "ok";
+      if (tot <= target.max) return "warn";
       return "over";
     }
-    return tot < targetMin ? "under" : tot > targetMax ? "over" : "ok";
+    return tot < target.min ? "under" : tot > target.max ? "over" : "ok";
   };
 
   return (
@@ -172,7 +176,7 @@ export default function YearTimelineChart({
 
         {/* Points */}
         {points.map(p => {
-          const st = statusOf(p.tot);
+          const st = statusOf(p.tot, p.i);
           const fill = st === "ok" ? "var(--accent-ok)" : st === "over" ? "var(--accent-bad)" : "var(--accent-warn)";
           const big  = p.m === currentMonthIdx || hover?.m === p.m;
           return (
@@ -194,7 +198,8 @@ export default function YearTimelineChart({
         const mData = monthsData[hover.i].data;
         const ot  = sumOvertimeHours(mData, regularDayHours);
         const vac = mData.filter(d => d.kind === "vac").length;
-        const st  = statusOf(hover.tot);
+        const st  = statusOf(hover.tot, hover.i);
+        const target = targetsForIndex(hover.i);
         const stColor = st === "ok" ? "var(--accent-ok)" : st === "over" ? "var(--accent-bad)" : "var(--accent-warn)";
         const stLabel = mode === "overtime"
           ? (st === "ok" ? t.withinTarget : st === "over" ? t.limitExceeded : t.withinLimit)
@@ -230,11 +235,11 @@ export default function YearTimelineChart({
               )}
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>{mode === "overtime" ? t.targetValue : t.target}</span>
-                <span>{mode === "overtime" ? fmtH(targetMin, hourDisplay) : fmtRange(targetMin, targetMax, hourDisplay)}</span>
+                <span>{mode === "overtime" ? fmtH(target.min, hourDisplay) : fmtRange(target.min, target.max, hourDisplay)}</span>
               </div>
               {mode === "overtime" && (
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>{t.limitValue}</span><span>{fmtH(targetMax, hourDisplay)}</span>
+                  <span>{t.limitValue}</span><span>{fmtH(target.max, hourDisplay)}</span>
                 </div>
               )}
             </div>

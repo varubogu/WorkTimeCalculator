@@ -75,12 +75,12 @@ WorkTimeCalculator/
 
 ### 読み取り
 
-1. `App` が初期化時に `loadSettings()` を呼び、`localStorage` から設定を取得。
-2. 祝日自動反映が ON の場合、`loadHolidayDates(year)` が Holidays JP API または `localStorage` キャッシュから祝日を取得。
-3. `buildMonthsData(year, settings, holidayDates)` が 12ヶ月分の `MonthData[]` を生成。
-   - 各日について `getRealMonthData` が `loadEntry(dateStr, breakMin)` で localStorage から `Entry` を取得。
+1. `App` が初期化時に `loadSettings()` と `loadSettingsPeriods()` を呼び、共通設定と適用開始日キー付き設定を取得。
+2. 祝日自動反映が有効な期間がある場合、`loadHolidayDates(year)` が Holidays JP API または `localStorage` キャッシュから祝日を取得。
+3. `buildMonthsData(year, preferences, settingsPeriods, holidayDates)` が 12ヶ月分の `MonthData[]` を生成。
+   - 各日について `resolveSettingsForDate()` で有効な設定を解決し、`getRealMonthData` が `loadEntry(dateStr, breakMin)` で localStorage から `Entry` を取得。
    - 種別（`reg` / `ot` / `off` / `vac` / `holi` / `wknd`）と実働時間（`hrs`）を計算。
-4. `MonthData[]` は `useMemo` でキャッシュされ、`year`・`settings`・`holidayDates`・`tick`（更新カウンタ）に依存。
+4. `MonthData[]` は `useMemo` でキャッシュされ、`year`・`preferences`・`settingsPeriods`・`holidayDates`・`tick`（更新カウンタ）に依存。
 
 ### 書き込み
 
@@ -93,7 +93,8 @@ WorkTimeCalculator/
 | データ | 保管場所 | キー |
 |--------|----------|------|
 | 日次エントリ | `localStorage` | `wtc_YYYY-MM-DD` |
-| 設定 | `localStorage` | `wtc_settings` |
+| 共通設定 | `localStorage` | `wtc_settings` |
+| 適用開始日キー付き設定 | `localStorage` | `wtc_settings_periods` |
 | 祝日キャッシュ | `localStorage` | `wtc_holidays_YYYY`（7日で再取得） |
 | 現在の年・月・ビュー・モーダル状態 | React state（メモリ） | — |
 

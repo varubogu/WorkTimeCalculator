@@ -7,8 +7,8 @@
 | キー | 型 (JSON) | 内容 |
 |------|-----------|------|
 | `wtc_YYYY-MM-DD` | `Entry` | 1 日分の勤務記録（例: `wtc_2026-04-19`） |
-| `wtc_settings` | `Settings` | アプリ設定 |
-| `wtc_settings_periods` | `SettingsPeriod[]` | 有効期間付き設定の上書きルール |
+| `wtc_settings` | `SettingsPreferences` | 表示形式・言語・テーマなどの共通設定 |
+| `wtc_settings_periods` | `SettingsPeriodMap` | 適用開始日キーごとの期間設定 |
 | `wtc_holidays_YYYY` | `{ savedAt, dates }` | Holidays JP API から取得した祝日の日付キャッシュ |
 
 日付キーの生成は [storage.ts](../src/storage.ts) の `isoDate(year, month, day)`：月は 0 起点で受け取り、1 起点のゼロパディングで文字列化します。
@@ -50,25 +50,44 @@ interface Settings {
 }
 ```
 
-### `SettingsPeriod` — 有効期間付き設定
+### `SettingsPreferences` — 共通設定
 
 ```ts
-interface SettingsPeriod {
-  effectiveFrom: string | null; // null または "YYYY-MM-DD"
-  effectiveTo: string | null;   // null または "YYYY-MM-DD"
-  overrides: {
-    dayHours?: number;
-    dayStart?: string;
-    timeStepMin?: number;
-    breakMin?: number;
-    showHolidays?: boolean;
-  };
+interface SettingsPreferences {
+  hourDisplay: HourDisplay; // "clock" | "decimal"
+  lang:        Lang;        // "ja" | "en"
+  dark:        boolean;     // ダークモード
 }
 ```
 
-`effectiveFrom` / `effectiveTo` は `null` を許容し、`null` は始端または終端が未指定であることを表します。初期状態では `null` 〜 `null` の期間が 1 件自動作成されます。開始日を設定すると、その期間は `null` 〜 新しい開始日 と 新しい開始日 〜 新しい終了日 に分割されます。
+### `SettingsPeriodMap` — 適用開始日キー付き設定
 
-期間内では `baseSettings` に対して `overrides` が上書き適用されます。現在の UI では、勤務計算に影響の大きい `dayHours` / `dayStart` / `timeStepMin` / `breakMin` を主対象として編集できます。いずれの期間にも属さない日付がある場合、カレンダー表示時に「設定が存在しない期間があります」と警告を出します。
+```ts
+interface SettingsPeriodMap {
+  "*": PeriodSettings;
+  [effectiveFrom: string]: PeriodSettings;
+}
+
+interface PeriodSettings {
+  dayHours: number;
+  dayStart: string;
+  timeStepMin: number;
+  monthTargetMin: number;
+  monthTargetMax: number;
+  monthOvertimeTargetMin: number;
+  monthOvertimeTargetMax: number;
+  yearTargetMin: number;
+  yearTargetMax: number;
+  yearOvertimeTargetMin: number;
+  yearOvertimeTargetMax: number;
+  breakMin: number;
+  showHolidays: boolean;
+}
+```
+
+`*` は必須で、どの日付キーよりも過去にある初期設定として扱います。`YYYY-MM-DD` キーの設定は、その適用開始日から次の適用開始日の前日まで有効です。次の適用開始日がない場合は未来方向へ継続します。キーは一意なので、同じ適用開始日を複数登録することはできません。
+
+期間設定は差分ではなく完全な `PeriodSettings` として保存します。`hourDisplay` / `lang` / `dark` は期間別ではなく `SettingsPreferences` に保存されます。
 
 デフォルト値（`defaultSettings()`）:
 
@@ -186,16 +205,15 @@ interface MonthData {
 | `loadEntry(dateStr, defaultBreak)` | localStorage から `Entry` を読む。未設定時は空の Entry を返す（`brk` は `defaultBreak` を使用） |
 | `saveEntry(dateStr, entry)` | 指定日の `Entry` を保存 |
 | `clearEntry(dateStr)` | 指定日のエントリを削除 |
-| `loadSettings()` | 設定を読み、`mergeSettings` でデフォルトと合成 |
-| `loadSettingsPeriods()` | 有効期間付き設定を読み込む |
-| `saveSettings(s)` | 設定を保存 |
-| `saveSettingsPeriods(periods)` | 有効期間付き設定を保存 |
+| `loadSettings()` | 共通設定を読み、デフォルトと合成 |
+| `loadSettingsPeriods()` | 適用開始日キー付き設定を読み込む。旧v1配列形式は自動移行 |
+| `saveSettings(s)` | 共通設定を保存 |
+| `saveSettingsPeriods(periods)` | 適用開始日キー付き設定を保存 |
 | `defaultSettings()` | デフォルト設定を返す |
-| `ensureSettingsPeriods(base, periods)` | 期間が空なら `null` 〜 `null` の初期期間を補う |
+| `ensureSettingsPeriods(base, periods)` | `*` がなければ初期期間を補う |
 | `mergeSettings(partial)` | 部分的な設定をデフォルトと合成して完全な `Settings` にする |
-| `mergeSettingsPeriods(periods)` | 期間設定を正規化してソートする |
-| `resolveSettingsForDate(base, periods, dateStr)` | 指定日に有効な設定を返す。未設定なら `null` |
-| `findFirstMissingSettingsDate(periods, start, end)` | 範囲内で最初に未設定となる日付を返す |
+| `mergeSettingsPeriods(periods)` | 期間設定を正規化する |
+| `resolveSettingsForDate(preferences, periods, dateStr)` | 指定日に有効な `Settings` を返す |
 | `isoDate(y, m, d)` | `YYYY-MM-DD` を生成（月は 0 起点で受け取り） |
 
 いずれも `try/catch` で JSON パース失敗を吸収し、壊れたデータでアプリが落ちないようにしています。
@@ -239,20 +257,48 @@ JSON / YAML 共通構造:
 ```json
 {
   "$schema": "https://example.com/schemas/wtc-settings.schema.json",
-  "schema": "wtc-settings/v1",
-  "baseSettings": {
-    "dayHours": 8,
-    "dayStart": "09:00"
+  "schema": "wtc-settings/v2",
+  "preferences": {
+    "hourDisplay": "clock",
+    "lang": "ja",
+    "dark": false
   },
-  "periods": [
-    {
-      "effectiveFrom": null,
-      "effectiveTo": "2026-06-30",
-      "overrides": { "dayHours": 7.5, "dayStart": "08:30", "breakMin": 45 }
+  "periods": {
+    "*": {
+      "dayHours": 8,
+      "dayStart": "09:00",
+      "timeStepMin": 15,
+      "monthTargetMin": 140,
+      "monthTargetMax": 180,
+      "monthOvertimeTargetMin": 0,
+      "monthOvertimeTargetMax": 45,
+      "yearTargetMin": 1680,
+      "yearTargetMax": 2160,
+      "yearOvertimeTargetMin": 0,
+      "yearOvertimeTargetMax": 360,
+      "breakMin": 60,
+      "showHolidays": true
+    },
+    "2026-07-01": {
+      "dayHours": 7.5,
+      "dayStart": "08:30",
+      "timeStepMin": 15,
+      "monthTargetMin": 140,
+      "monthTargetMax": 180,
+      "monthOvertimeTargetMin": 0,
+      "monthOvertimeTargetMax": 45,
+      "yearTargetMin": 1680,
+      "yearTargetMax": 2160,
+      "yearOvertimeTargetMin": 0,
+      "yearOvertimeTargetMax": 360,
+      "breakMin": 45,
+      "showHolidays": true
     }
-  ]
+  }
 }
 ```
+
+エクスポートは常に `wtc-settings/v2` 形式です。`wtc-settings/v1` の `baseSettings + periods[]` 形式はインポート時にv2へ移行されます。
 
 `src/fileFormats.ts` には JSON Schema 定義（`WORK_ENTRIES_JSON_SCHEMA`, `SETTINGS_JSON_SCHEMA`）と、内容検証用のバリデータを置いています。配信用のスキーマ実体は `public/schemas/` にあり、ビルド後は `/schemas/wtc-work-entries.schema.json` と `/schemas/wtc-settings.schema.json` で同一ホストから参照できます。JSON / YAML のエクスポートには `$schema` が付きます。
 

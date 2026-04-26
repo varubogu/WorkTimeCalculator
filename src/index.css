@@ -679,6 +679,7 @@ h3 { font-size: 18px; line-height: 1.2; }
 }
 
 .settings-row input[type=date],
+.settings-row input[type=text],
 .settings-row input[type=time],
 .settings-row select,
 .settings-period-select {
@@ -693,6 +694,7 @@ h3 { font-size: 18px; line-height: 1.2; }
 }
 
 .settings-row input[type=date],
+.settings-row input[type=text],
 .settings-row input[type=time] {
   width: 148px;
 }

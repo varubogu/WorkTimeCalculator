@@ -49,17 +49,34 @@ export interface Settings {
   dark: boolean;
 }
 
-export interface SettingsPeriod {
+export type SettingsPreferences = Pick<Settings, "hourDisplay" | "lang" | "dark">;
+
+export type PeriodSettings = Pick<
+  Settings,
+  | "dayHours"
+  | "dayStart"
+  | "timeStepMin"
+  | "monthTargetMin"
+  | "monthTargetMax"
+  | "monthOvertimeTargetMin"
+  | "monthOvertimeTargetMax"
+  | "yearTargetMin"
+  | "yearTargetMax"
+  | "yearOvertimeTargetMin"
+  | "yearOvertimeTargetMax"
+  | "breakMin"
+  | "showHolidays"
+>;
+
+export interface SettingsPeriodMap {
+  "*": PeriodSettings;
+  [effectiveFrom: string]: PeriodSettings;
+}
+
+export interface LegacySettingsPeriod {
   effectiveFrom: string | null;
   effectiveTo: string | null;
-  overrides: Partial<Pick<
-    Settings,
-    | "dayHours"
-    | "dayStart"
-    | "timeStepMin"
-    | "breakMin"
-    | "showHolidays"
-  >>;
+  overrides: Partial<Pick<Settings, keyof PeriodSettings>>;
 }
 
 export interface WorkEntriesFileEntry {
@@ -78,9 +95,9 @@ export interface WorkEntriesFile {
 
 export interface SettingsFile {
   $schema?: string;
-  schema: "wtc-settings/v1";
-  baseSettings: Settings;
-  periods: SettingsPeriod[];
+  schema: "wtc-settings/v2";
+  preferences: SettingsPreferences;
+  periods: SettingsPeriodMap;
 }
 
 export type HourDisplay = "clock" | "decimal";
@@ -189,7 +206,7 @@ export interface Translations {
   addSettingsPeriod: string;
   removeSettingsPeriod: string;
   settingsPeriodHelp: string;
-  settingsPeriodMissing: string;
+  settingsPeriodDuplicate: string;
   fileImportSuccess: string;
   fileImportError: string;
   fileValidationError: string;

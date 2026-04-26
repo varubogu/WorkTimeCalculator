@@ -63,13 +63,13 @@ VITE_SCHEMA_BASE_URL=https://example.com bun run build
 
 例: 「1日の目標残業時間」を追加する場合。
 
-1. **型を拡張** — [src/types.ts](../src/types.ts) の `Settings` に項目を追加。
-2. **デフォルト値とマージ処理** — [src/storage.ts](../src/storage.ts) の `defaultSettings()` と `mergeSettings()` にキーを追加。
+1. **型を拡張** — [src/types.ts](../src/types.ts) の `Settings` に項目を追加。期間別にする場合は `PeriodSettings`、共通設定なら `SettingsPreferences` にも追加。
+2. **デフォルト値とマージ処理** — [src/storage.ts](../src/storage.ts) の `defaultSettings()`、`mergeSettings()`、関連する期間/共通設定のマージ処理にキーを追加。
 3. **UI を追加** — [src/components/SettingsModal.tsx](../src/components/SettingsModal.tsx) に行を足す。
 4. **翻訳ラベル** — [src/i18n.ts](../src/i18n.ts) の `ja` と `en` 両方に追加し、[src/types.ts](../src/types.ts) の `Translations` にキーを追加。
-5. **利用側** — `App.tsx` の `settings` 経由で参照。
+5. **利用側** — `App.tsx` で日付に応じて解決された `settings`、または `preferences` 経由で参照。
 
-既存ユーザーの `wtc_settings` には新しいキーが存在しないため、`mergeSettings()` で必ず後方互換のデフォルト値を補完してください。時刻設定を追加する場合は、`dayStart` と同様に不正な `"HH:MM"` を保存値として採用しないチェックを入れます。
+既存ユーザーの `wtc_settings` / `wtc_settings_periods` には新しいキーが存在しないため、マージ処理で必ず後方互換のデフォルト値を補完してください。時刻設定を追加する場合は、`dayStart` と同様に不正な `"HH:MM"` を保存値として採用しないチェックを入れます。
 
 ### 新しいコンポーネントを追加する
 

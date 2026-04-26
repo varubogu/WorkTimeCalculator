@@ -1,4 +1,4 @@
-import type { DayData, HourDisplay, MonthData, Settings, SettingsPeriod } from "./types";
+import type { DayData, HourDisplay, MonthData, SettingsPeriodMap, SettingsPreferences } from "./types";
 import { createWorkEntriesFile, serializeWorkEntriesCsv, serializeWorkEntriesFile } from "./fileFormats";
 import JP_HOLIDAYS from "./holidays";
 import { isoDate, loadEntry, resolveSettingsForDate } from "./storage";
@@ -62,12 +62,10 @@ export function fmtHoursWithSign(
 export function getRealMonthData(
   year: number,
   month: number,
-  settings: Settings,
-  settingsPeriods: SettingsPeriod[],
-  useHolidays: boolean,
+  preferences: SettingsPreferences,
+  settingsPeriods: SettingsPeriodMap,
   holidayDates: ReadonlySet<string> = JP_HOLIDAYS,
 ): DayData[] {
-  const holidays = useHolidays ? holidayDates : new Set<string>();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   const todayStr = isoDate(today.getFullYear(), today.getMonth(), today.getDate());
@@ -77,11 +75,9 @@ export function getRealMonthData(
     const date      = new Date(year, month, d);
     const dow       = date.getDay();
     const dateStr   = isoDate(year, month, d);
-    const settingsForDate = resolveSettingsForDate(settings, settingsPeriods, dateStr);
-    const resolvedSettings = settingsForDate ?? settings;
-    const hasMissingSettings = settingsForDate === null;
+    const resolvedSettings = resolveSettingsForDate(preferences, settingsPeriods, dateStr);
     const isWorking = [1, 2, 3, 4, 5].includes(dow);
-    const isHoliday = holidays.has(dateStr);
+    const isHoliday = resolvedSettings.showHolidays && holidayDates.has(dateStr);
     const isToday   = dateStr === todayStr;
     const entry     = loadEntry(dateStr, resolvedSettings.breakMin);
     const net       = (!entry.vac && entry.start && entry.end)
@@ -121,7 +117,7 @@ export function getRealMonthData(
       isHoliday,
       isWorking,
       isToday,
-      hasMissingSettings,
+      hasMissingSettings: false,
       dateStr,
       entry,
     });
@@ -149,13 +145,13 @@ export function sumKindHours(data: DayData[], kind: DayData["kind"]): number {
 
 export function buildMonthsData(
   year: number,
-  settings: Settings,
-  settingsPeriods: SettingsPeriod[],
+  preferences: SettingsPreferences,
+  settingsPeriods: SettingsPeriodMap,
   holidayDates: ReadonlySet<string> = JP_HOLIDAYS,
 ): MonthData[] {
   return Array.from({ length: 12 }, (_, i) => ({
     m:    i,
-    data: getRealMonthData(year, i, settings, settingsPeriods, settings.showHolidays, holidayDates),
+    data: getRealMonthData(year, i, preferences, settingsPeriods, holidayDates),
   }));
 }
 

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   ensureSettingsPeriods,
-  findFirstMissingSettingsDate,
   clearEntry,
+  defaultSettingsPreferences,
   defaultSettings,
   loadSettingsPeriods,
   isoDate,
@@ -72,25 +72,14 @@ describe("storage helpers", () => {
   });
 
   it("有効期間付き設定を保存して読み込む", () => {
-    saveSettingsPeriods([
-      {
-        effectiveFrom: null,
-        effectiveTo: "2026-04-30",
-        overrides: { dayHours: 7.5, dayStart: "08:30", breakMin: 45 },
-      },
-    ]);
+    saveSettingsPeriods({
+      "*": { ...defaultSettings(), dayHours: 7.5, dayStart: "08:30", breakMin: 45 },
+    });
 
-    expect(loadSettingsPeriods()).toEqual([
-      {
-        effectiveFrom: null,
-        effectiveTo: "2026-04-30",
-        overrides: { dayHours: 7.5, dayStart: "08:30", breakMin: 45 },
-      },
-    ]);
+    expect(loadSettingsPeriods()["*"]).toMatchObject({ dayHours: 7.5, dayStart: "08:30", breakMin: 45 });
   });
 
-  it("対象日の設定を有効期間から解決する", () => {
-    const settings = defaultSettings();
+  it("* が全期間に適用される", () => {
     const periods = mergeSettingsPeriods([
       {
         effectiveFrom: null,
@@ -99,35 +88,57 @@ describe("storage helpers", () => {
       },
     ]);
 
-    expect(resolveSettingsForDate(settings, periods, "2026-04-12")).toMatchObject({
+    expect(resolveSettingsForDate(defaultSettingsPreferences(), periods, "2026-04-12")).toMatchObject({
       dayHours: 7.5,
       dayStart: "08:30",
       breakMin: 45,
     });
-    expect(resolveSettingsForDate(settings, periods, "2026-05-01")).toBeNull();
+    expect(resolveSettingsForDate(defaultSettingsPreferences(), periods, "2026-05-01")).toMatchObject({
+      dayHours: 7.5,
+      dayStart: "08:30",
+      breakMin: 45,
+    });
+  });
+
+  it("次の適用開始日以降は新しい設定を解決する", () => {
+    const periods = mergeSettingsPeriods({
+      "*": { ...defaultSettings(), dayHours: 8, dayStart: "09:00", breakMin: 60 },
+      "2026-05-01": { ...defaultSettings(), dayHours: 7.5, dayStart: "08:30", breakMin: 45 },
+    });
+
+    expect(resolveSettingsForDate(defaultSettingsPreferences(), periods, "2026-04-30")).toMatchObject({
+      dayHours: 8,
+      dayStart: "09:00",
+      breakMin: 60,
+    });
+    expect(resolveSettingsForDate(defaultSettingsPreferences(), periods, "2026-05-01")).toMatchObject({
+      dayHours: 7.5,
+      dayStart: "08:30",
+      breakMin: 45,
+    });
   });
 
   it("期間が空なら全期間の初期設定を自動作成する", () => {
-    expect(ensureSettingsPeriods(defaultSettings(), [])).toEqual([
-      expect.objectContaining({
-        effectiveFrom: null,
-        effectiveTo: null,
-        overrides: expect.objectContaining({
+    expect(ensureSettingsPeriods(defaultSettings(), [])).toEqual({
+      "*": expect.objectContaining({
           dayHours: 8,
           dayStart: "09:00",
           breakMin: 60,
           timeStepMin: 15,
-        }),
       }),
-    ]);
+    });
   });
 
-  it("未設定期間の先頭日を検出する", () => {
-    const missing = findFirstMissingSettingsDate([
-      { effectiveFrom: null, effectiveTo: "2026-03-31", overrides: { dayHours: 8 } },
+  it("v1 localStorage の期間を v2 形式へ移行して読み込む", () => {
+    localStorage.setItem("wtc_settings", JSON.stringify({ ...defaultSettings(), dayHours: 8, dayStart: "09:00", breakMin: 60 }));
+    localStorage.setItem("wtc_settings_periods", JSON.stringify([
+      { effectiveFrom: null, effectiveTo: "2026-04-30", overrides: { dayHours: 8 } },
       { effectiveFrom: "2026-05-01", effectiveTo: null, overrides: { dayHours: 7.5 } },
-    ], "2026-01-01", "2026-12-31");
+    ]));
 
-    expect(missing).toBe("2026-04-01");
+    const periods = loadSettingsPeriods();
+
+    expect(periods["*"].dayHours).toBe(8);
+    expect(periods["2026-05-01"].dayHours).toBe(7.5);
   });
 });

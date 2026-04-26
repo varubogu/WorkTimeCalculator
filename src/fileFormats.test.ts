@@ -9,7 +9,7 @@ import {
   serializeWorkEntriesCsv,
   serializeWorkEntriesFile,
 } from "./fileFormats";
-import { defaultSettings } from "./storage";
+import { defaultSettings, defaultSettingsPreferences, defaultSettingsPeriods } from "./storage";
 
 describe("file formats", () => {
   it("作業時間JSONに同一ホストのスキーマURLを含める", () => {
@@ -64,24 +64,22 @@ describe("file formats", () => {
   });
 
   it("設定YAMLを往復できる", () => {
-    const file = createSettingsFile(defaultSettings(), [
-      {
-        effectiveFrom: null,
-        effectiveTo: "2026-04-30",
-        overrides: { dayHours: 7.5, dayStart: "08:30", breakMin: 45 },
-      },
-    ]);
+    const file = createSettingsFile(defaultSettingsPreferences(), {
+      "*": { ...defaultSettings(), dayHours: 7.5, dayStart: "08:30", breakMin: 45 },
+      "2026-05-01": { ...defaultSettings(), dayHours: 6, dayStart: "10:00", breakMin: 30 },
+    });
 
     const parsed = parseSettingsText(serializeSettingsFile(file, "yaml"), "yaml");
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
       expect(parsed.value.$schema).toBe(`${window.location.origin}/schemas/wtc-settings.schema.json`);
-      expect(parsed.value.periods[0].overrides.dayHours).toBe(7.5);
-      expect(parsed.value.periods[0].effectiveFrom).toBeNull();
+      expect(parsed.value.schema).toBe("wtc-settings/v2");
+      expect(parsed.value.periods["*"].dayHours).toBe(7.5);
+      expect(parsed.value.periods["2026-05-01"].dayStart).toBe("10:00");
     }
   });
 
-  it("null の期間境界を含む設定JSONを読み込める", () => {
+  it("v1 設定JSONをv2へ移行して読み込める", () => {
     const parsed = parseSettingsText(JSON.stringify({
       schema: "wtc-settings/v1",
       baseSettings: defaultSettings(),
@@ -89,6 +87,30 @@ describe("file formats", () => {
     }), "json");
 
     expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.schema).toBe("wtc-settings/v2");
+      expect(parsed.value.periods["*"].dayHours).toBe(8);
+    }
+  });
+
+  it("v2 設定JSONは * 期間が必須", () => {
+    const parsed = parseSettingsText(JSON.stringify({
+      schema: "wtc-settings/v2",
+      preferences: defaultSettingsPreferences(),
+      periods: { "2026-05-01": defaultSettingsPeriods()["*"] },
+    }), "json");
+
+    expect(parsed.ok).toBe(false);
+  });
+
+  it("v2 設定JSONは不正な日付キーを拒否する", () => {
+    const parsed = parseSettingsText(JSON.stringify({
+      schema: "wtc-settings/v2",
+      preferences: defaultSettingsPreferences(),
+      periods: { "*": defaultSettingsPeriods()["*"], "2026/05/01": defaultSettingsPeriods()["*"] },
+    }), "json");
+
+    expect(parsed.ok).toBe(false);
   });
 
   it("不正な設定ファイルを拒否する", () => {

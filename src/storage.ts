@@ -1,4 +1,11 @@
-import type { Entry, Settings, SettingsPeriod } from "./types";
+import type {
+  Entry,
+  LegacySettingsPeriod,
+  PeriodSettings,
+  Settings,
+  SettingsPeriodMap,
+  SettingsPreferences,
+} from "./types";
 
 const STORAGE_KEY_SETTINGS = "wtc_settings";
 const STORAGE_KEY_SETTINGS_PERIODS = "wtc_settings_periods";
@@ -66,20 +73,48 @@ export function defaultSettings(): Settings {
   };
 }
 
-export function defaultSettingsPeriods(): SettingsPeriod[] {
-  return [];
+export function defaultSettingsPreferences(): SettingsPreferences {
+  const settings = defaultSettings();
+  return {
+    hourDisplay: settings.hourDisplay,
+    lang: settings.lang,
+    dark: settings.dark,
+  };
 }
 
-export function createDefaultSettingsPeriod(settings: Settings): SettingsPeriod {
+export function defaultPeriodSettings(): PeriodSettings {
+  return settingsToPeriodSettings(defaultSettings());
+}
+
+export function defaultSettingsPeriods(): SettingsPeriodMap {
+  return { "*": defaultPeriodSettings() };
+}
+
+export function settingsToPreferences(settings: Partial<Settings>): SettingsPreferences {
+  const d = defaultSettingsPreferences();
   return {
-    effectiveFrom: null,
-    effectiveTo: null,
-    overrides: {
-      dayHours: settings.dayHours,
-      dayStart: settings.dayStart,
-      breakMin: settings.breakMin,
-      timeStepMin: settings.timeStepMin,
-    },
+    hourDisplay: settings.hourDisplay === "decimal" ? "decimal" : d.hourDisplay,
+    lang: settings.lang === "en" ? "en" : d.lang,
+    dark: typeof settings.dark === "boolean" ? settings.dark : d.dark,
+  };
+}
+
+export function settingsToPeriodSettings(settings: Partial<Settings>): PeriodSettings {
+  const merged = mergeSettings(settings);
+  return {
+    dayHours: merged.dayHours,
+    dayStart: merged.dayStart,
+    timeStepMin: merged.timeStepMin,
+    monthTargetMin: merged.monthTargetMin,
+    monthTargetMax: merged.monthTargetMax,
+    monthOvertimeTargetMin: merged.monthOvertimeTargetMin,
+    monthOvertimeTargetMax: merged.monthOvertimeTargetMax,
+    yearTargetMin: merged.yearTargetMin,
+    yearTargetMax: merged.yearTargetMax,
+    yearOvertimeTargetMin: merged.yearOvertimeTargetMin,
+    yearOvertimeTargetMax: merged.yearOvertimeTargetMax,
+    breakMin: merged.breakMin,
+    showHolidays: merged.showHolidays,
   };
 }
 
@@ -111,119 +146,138 @@ export function mergeSettings(s: Partial<Settings>): Settings {
   };
 }
 
-function mergeSettingsPeriod(period: Partial<SettingsPeriod>): SettingsPeriod | null {
-  const effectiveFrom = period.effectiveFrom ?? null;
-  const effectiveTo = period.effectiveTo ?? null;
-  if (effectiveFrom !== null && !isIsoDate(effectiveFrom)) return null;
-  if (effectiveTo !== null && !isIsoDate(effectiveTo)) return null;
-  if (effectiveFrom !== null && effectiveTo !== null && effectiveFrom > effectiveTo) return null;
+export function mergeSettingsPreferences(settings: Partial<SettingsPreferences>): SettingsPreferences {
+  return settingsToPreferences(settings);
+}
 
-  const overrides = period.overrides ?? {};
-  const mergedOverrides: SettingsPeriod["overrides"] = {};
-
-  if (typeof overrides.dayHours === "number" && Number.isFinite(overrides.dayHours) && overrides.dayHours > 0) {
-    mergedOverrides.dayHours = overrides.dayHours;
-  }
-  if (isValidTime(overrides.dayStart)) {
-    mergedOverrides.dayStart = overrides.dayStart;
-  }
-  if (typeof overrides.timeStepMin === "number" && Number.isFinite(overrides.timeStepMin)) {
-    const rounded = Math.floor(overrides.timeStepMin);
-    if (rounded >= 1 && rounded <= 120) mergedOverrides.timeStepMin = rounded;
-  }
-  if (typeof overrides.breakMin === "number" && Number.isFinite(overrides.breakMin) && overrides.breakMin >= 0) {
-    mergedOverrides.breakMin = overrides.breakMin;
-  }
-  if (typeof overrides.showHolidays === "boolean") {
-    mergedOverrides.showHolidays = overrides.showHolidays;
-  }
-
+export function mergePeriodSettings(settings: Partial<PeriodSettings>): PeriodSettings {
+  const d = defaultPeriodSettings();
   return {
-    effectiveFrom,
-    effectiveTo,
-    overrides: mergedOverrides,
+    dayHours: typeof settings.dayHours === "number" && Number.isFinite(settings.dayHours) && settings.dayHours > 0
+      ? settings.dayHours
+      : d.dayHours,
+    dayStart: isValidTime(settings.dayStart) ? settings.dayStart : d.dayStart,
+    timeStepMin: (() => {
+      const step = Math.floor(Number(settings.timeStepMin));
+      return step >= 1 && step <= 120 ? step : d.timeStepMin;
+    })(),
+    monthTargetMin: finiteNumberOr(settings.monthTargetMin, d.monthTargetMin),
+    monthTargetMax: finiteNumberOr(settings.monthTargetMax, d.monthTargetMax),
+    monthOvertimeTargetMin: finiteNumberOr(settings.monthOvertimeTargetMin, d.monthOvertimeTargetMin),
+    monthOvertimeTargetMax: finiteNumberOr(settings.monthOvertimeTargetMax, d.monthOvertimeTargetMax),
+    yearTargetMin: finiteNumberOr(settings.yearTargetMin, d.yearTargetMin),
+    yearTargetMax: finiteNumberOr(settings.yearTargetMax, d.yearTargetMax),
+    yearOvertimeTargetMin: finiteNumberOr(settings.yearOvertimeTargetMin, d.yearOvertimeTargetMin),
+    yearOvertimeTargetMax: finiteNumberOr(settings.yearOvertimeTargetMax, d.yearOvertimeTargetMax),
+    breakMin: finiteNumberOr(settings.breakMin, d.breakMin),
+    showHolidays: typeof settings.showHolidays === "boolean" ? settings.showHolidays : d.showHolidays,
   };
 }
 
-export function mergeSettingsPeriods(periods: Partial<SettingsPeriod>[]): SettingsPeriod[] {
-  return periods
-    .map(period => mergeSettingsPeriod(period))
-    .filter((period): period is SettingsPeriod => period !== null)
-    .sort((a, b) => {
-      const fromA = a.effectiveFrom ?? "";
-      const fromB = b.effectiveFrom ?? "";
-      const toA = a.effectiveTo ?? "9999-12-31";
-      const toB = b.effectiveTo ?? "9999-12-31";
-      return fromA.localeCompare(fromB) || toA.localeCompare(toB);
-    });
+function isPeriodKey(value: string): boolean {
+  return value === "*" || isIsoDate(value);
 }
 
-export function loadSettings(): Settings {
+function sortPeriodKeys(keys: string[]): string[] {
+  return keys.sort((a, b) => {
+    if (a === "*") return -1;
+    if (b === "*") return 1;
+    return a.localeCompare(b);
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function migrateLegacySettingsPeriods(
+  baseSettings: Settings,
+  periods: Partial<LegacySettingsPeriod>[],
+): SettingsPeriodMap {
+  const migrated: SettingsPeriodMap = { "*": settingsToPeriodSettings(baseSettings) };
+  for (const period of periods) {
+    const key = period.effectiveFrom ?? "*";
+    if (!isPeriodKey(key)) continue;
+    migrated[key] = mergePeriodSettings({ ...settingsToPeriodSettings(baseSettings), ...(period.overrides ?? {}) });
+  }
+  return mergeSettingsPeriods(migrated);
+}
+
+export function mergeSettingsPeriods(value: unknown): SettingsPeriodMap {
+  if (Array.isArray(value)) {
+    return migrateLegacySettingsPeriods(defaultSettings(), value as Partial<LegacySettingsPeriod>[]);
+  }
+
+  if (!isRecord(value)) return defaultSettingsPeriods();
+
+  const merged: Partial<SettingsPeriodMap> = {};
+  for (const key of sortPeriodKeys(Object.keys(value))) {
+    if (!isPeriodKey(key)) continue;
+    const period = value[key];
+    if (isRecord(period)) merged[key] = mergePeriodSettings(period as Partial<PeriodSettings>);
+  }
+
+  if (!merged["*"]) merged["*"] = defaultPeriodSettings();
+  return merged as SettingsPeriodMap;
+}
+
+export function loadSettings(): SettingsPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
     if (raw) {
-      return mergeSettings(JSON.parse(raw) as Partial<Settings>);
+      return mergeSettingsPreferences(JSON.parse(raw) as Partial<SettingsPreferences>);
     }
   } catch { /* ignore */ }
-  return defaultSettings();
+  return defaultSettingsPreferences();
 }
 
-export function saveSettings(s: Settings): void {
-  localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(s));
+export function saveSettings(settings: SettingsPreferences): void {
+  localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(mergeSettingsPreferences(settings)));
 }
 
-export function loadSettingsPeriods(): SettingsPeriod[] {
+export function loadSettingsPeriods(): SettingsPeriodMap {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_SETTINGS_PERIODS);
     if (raw) {
-      return mergeSettingsPeriods(JSON.parse(raw) as Partial<SettingsPeriod>[]);
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        const rawSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
+        const baseSettings = rawSettings
+          ? mergeSettings(JSON.parse(rawSettings) as Partial<Settings>)
+          : defaultSettings();
+        return migrateLegacySettingsPeriods(baseSettings, parsed as Partial<LegacySettingsPeriod>[]);
+      }
+      return mergeSettingsPeriods(parsed);
     }
   } catch { /* ignore */ }
   return defaultSettingsPeriods();
 }
 
-export function ensureSettingsPeriods(baseSettings: Settings, periods: Partial<SettingsPeriod>[]): SettingsPeriod[] {
+export function ensureSettingsPeriods(baseSettings: Partial<Settings>, periods: unknown): SettingsPeriodMap {
+  if ((Array.isArray(periods) && periods.length === 0) || (!Array.isArray(periods) && !isRecord(periods))) {
+    return { "*": settingsToPeriodSettings(baseSettings) };
+  }
   const normalized = mergeSettingsPeriods(periods);
-  return normalized.length > 0 ? normalized : [createDefaultSettingsPeriod(baseSettings)];
+  if (normalized["*"]) return normalized;
+  return { ...normalized, "*": settingsToPeriodSettings(baseSettings) };
 }
 
-export function saveSettingsPeriods(periods: SettingsPeriod[]): void {
+export function saveSettingsPeriods(periods: SettingsPeriodMap): void {
   localStorage.setItem(STORAGE_KEY_SETTINGS_PERIODS, JSON.stringify(mergeSettingsPeriods(periods)));
 }
 
-export function periodMatchesDate(period: SettingsPeriod, dateStr: string): boolean {
-  return (period.effectiveFrom === null || period.effectiveFrom <= dateStr)
-    && (period.effectiveTo === null || dateStr <= period.effectiveTo);
-}
-
 export function resolveSettingsForDate(
-  baseSettings: Settings,
-  periods: SettingsPeriod[],
+  preferences: SettingsPreferences,
+  periods: SettingsPeriodMap,
   dateStr: string,
-): Settings | null {
-  const matching = periods.filter(period => periodMatchesDate(period, dateStr));
-  if (matching.length === 0) return null;
-
-  const overrides = matching.reduce<Partial<Settings>>(
-    (acc, period) => ({ ...acc, ...period.overrides }),
-    {},
-  );
-  return mergeSettings({ ...baseSettings, ...overrides });
+): Settings {
+  const normalized = mergeSettingsPeriods(periods);
+  const matchingKeys = sortPeriodKeys(Object.keys(normalized))
+    .filter(periodKey => periodKey === "*" || periodKey <= dateStr);
+  const key = matchingKeys[matchingKeys.length - 1] ?? "*";
+  return mergeSettings({ ...normalized[key], ...preferences });
 }
 
-export function findFirstMissingSettingsDate(
-  periods: SettingsPeriod[],
-  startDateStr: string,
-  endDateStr: string,
-): string | null {
-  const cursor = new Date(`${startDateStr}T00:00:00`);
-  const end = new Date(`${endDateStr}T00:00:00`);
-
-  while (cursor <= end) {
-    const dateStr = isoDate(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
-    if (!periods.some(period => periodMatchesDate(period, dateStr))) return dateStr;
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  return null;
+export function hasAnyHolidayPeriod(periods: SettingsPeriodMap): boolean {
+  return Object.values(mergeSettingsPeriods(periods)).some(period => period.showHolidays);
 }

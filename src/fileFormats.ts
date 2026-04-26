@@ -1,9 +1,20 @@
-import { defaultSettings, mergeSettings, mergeSettingsPeriods } from "./storage";
+import {
+  defaultSettings,
+  defaultSettingsPreferences,
+  mergePeriodSettings,
+  mergeSettings,
+  mergeSettingsPeriods,
+  mergeSettingsPreferences,
+  settingsToPeriodSettings,
+  settingsToPreferences,
+} from "./storage";
 import type {
   Entry,
+  LegacySettingsPeriod,
+  PeriodSettings,
   Settings,
   SettingsFile,
-  SettingsPeriod,
+  SettingsPeriodMap,
   WorkEntriesFile,
   WorkEntriesFileEntry,
 } from "./types";
@@ -43,6 +54,74 @@ export const SETTINGS_JSON_SCHEMA = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: SETTINGS_SCHEMA_PATH,
   title: "Work Time Calculator Settings",
+  type: "object",
+  additionalProperties: false,
+  required: ["schema", "preferences", "periods"],
+  properties: {
+    $schema: { type: "string", format: "uri" },
+    schema: { const: "wtc-settings/v2" },
+    preferences: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "hourDisplay",
+        "lang",
+        "dark",
+      ],
+      properties: {
+        hourDisplay: { enum: ["clock", "decimal"] },
+        lang: { enum: ["ja", "en"] },
+        dark: { type: "boolean" },
+      },
+    },
+    periods: {
+      type: "object",
+      additionalProperties: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "dayHours",
+          "dayStart",
+          "timeStepMin",
+          "breakMin",
+          "showHolidays",
+          "monthTargetMin",
+          "monthTargetMax",
+          "monthOvertimeTargetMin",
+          "monthOvertimeTargetMax",
+          "yearTargetMin",
+          "yearTargetMax",
+          "yearOvertimeTargetMin",
+          "yearOvertimeTargetMax",
+        ],
+        properties: {
+          dayHours: { type: "number", exclusiveMinimum: 0 },
+          dayStart: { type: "string", pattern: "^\\d{1,2}:\\d{2}$" },
+          timeStepMin: { type: "integer", minimum: 1, maximum: 120 },
+          breakMin: { type: "number", minimum: 0 },
+          showHolidays: { type: "boolean" },
+          monthTargetMin: { type: "number" },
+          monthTargetMax: { type: "number" },
+          monthOvertimeTargetMin: { type: "number" },
+          monthOvertimeTargetMax: { type: "number" },
+          yearTargetMin: { type: "number" },
+          yearTargetMax: { type: "number" },
+          yearOvertimeTargetMin: { type: "number" },
+          yearOvertimeTargetMax: { type: "number" },
+        },
+      },
+      propertyNames: {
+        pattern: "^(\\*|\\d{4}-\\d{2}-\\d{2})$",
+      },
+      required: ["*"],
+    },
+  },
+} as const;
+
+export const LEGACY_SETTINGS_JSON_SCHEMA = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: SETTINGS_SCHEMA_PATH,
+  title: "Work Time Calculator Settings v1",
   type: "object",
   additionalProperties: false,
   required: ["schema", "baseSettings", "periods"],
@@ -156,7 +235,8 @@ function parseScalar(value: string): unknown {
 function splitKeyValue(line: string): [string, string] | null {
   const idx = line.indexOf(":");
   if (idx === -1) return null;
-  return [line.slice(0, idx).trim(), line.slice(idx + 1).trim()];
+  const key = line.slice(0, idx).trim();
+  return [String(parseScalar(key)), line.slice(idx + 1).trim()];
 }
 
 function parseSimpleYaml(text: string): unknown {
@@ -263,6 +343,11 @@ function yamlScalar(value: string | number | boolean): string {
   return String(value);
 }
 
+function yamlKey(key: string): string {
+  if (key === "*" || key === "" || /[:#\-\n\s]/.test(key)) return JSON.stringify(key);
+  return key;
+}
+
 function toYaml(value: unknown, indent = 0): string {
   const pad = " ".repeat(indent);
   if (Array.isArray(value)) {
@@ -283,9 +368,9 @@ function toYaml(value: unknown, indent = 0): string {
       .map(([key, item]) => {
         if (Array.isArray(item) || isRecord(item)) {
           const nested = toYaml(item, indent + 2);
-          return `${pad}${key}:\n${nested}`;
+          return `${pad}${yamlKey(key)}:\n${nested}`;
         }
-        return `${pad}${key}: ${yamlScalar(item as string | number | boolean)}`;
+        return `${pad}${yamlKey(key)}: ${yamlScalar(item as string | number | boolean)}`;
       })
       .join("\n");
   }
@@ -348,7 +433,7 @@ export function validateWorkEntriesFile(value: unknown): ParseSuccess<WorkEntrie
   };
 }
 
-function validateSettingsPeriod(period: unknown, index: number): string[] {
+function validateLegacySettingsPeriod(period: unknown, index: number): string[] {
   if (!isRecord(period)) return [`periods[${index}] must be an object.`];
   const errors: string[] = [];
   if (period.effectiveFrom !== null && !isIsoDate(period.effectiveFrom)) errors.push(`periods[${index}].effectiveFrom must be YYYY-MM-DD or null.`);
@@ -364,16 +449,101 @@ function validateSettingsPeriod(period: unknown, index: number): string[] {
   return errors;
 }
 
-export function validateSettingsFile(value: unknown): ParseSuccess<SettingsFile> | ParseFailure {
-  if (!isRecord(value)) return { ok: false, errors: ["settings file must be an object."] };
+function validatePeriodSettings(period: unknown, key: string): string[] {
+  if (!isRecord(period)) return [`periods.${key} must be an object.`];
   const errors: string[] = [];
-  if (value.schema !== "wtc-settings/v1") errors.push("schema must be wtc-settings/v1.");
+  const required: (keyof PeriodSettings)[] = [
+    "dayHours",
+    "dayStart",
+    "timeStepMin",
+    "monthTargetMin",
+    "monthTargetMax",
+    "monthOvertimeTargetMin",
+    "monthOvertimeTargetMax",
+    "yearTargetMin",
+    "yearTargetMax",
+    "yearOvertimeTargetMin",
+    "yearOvertimeTargetMax",
+    "breakMin",
+    "showHolidays",
+  ];
+
+  for (const field of required) {
+    if (!(field in period)) errors.push(`periods.${key}.${field} is required.`);
+  }
+  if (typeof period.dayHours !== "number" || !Number.isFinite(period.dayHours) || period.dayHours <= 0) errors.push(`periods.${key}.dayHours must be a positive number.`);
+  if (!isTime(period.dayStart)) errors.push(`periods.${key}.dayStart must be HH:MM.`);
+  if (typeof period.timeStepMin !== "number" || !Number.isInteger(period.timeStepMin) || period.timeStepMin < 1 || period.timeStepMin > 120) {
+    errors.push(`periods.${key}.timeStepMin must be an integer from 1 to 120.`);
+  }
+  if (typeof period.breakMin !== "number" || !Number.isFinite(period.breakMin) || period.breakMin < 0) errors.push(`periods.${key}.breakMin must be a non-negative number.`);
+  if (typeof period.showHolidays !== "boolean") errors.push(`periods.${key}.showHolidays must be boolean.`);
+
+  for (const field of [
+    "monthTargetMin",
+    "monthTargetMax",
+    "monthOvertimeTargetMin",
+    "monthOvertimeTargetMax",
+    "yearTargetMin",
+    "yearTargetMax",
+    "yearOvertimeTargetMin",
+    "yearOvertimeTargetMax",
+  ] as const) {
+    if (typeof period[field] !== "number" || !Number.isFinite(period[field])) {
+      errors.push(`periods.${key}.${field} must be a number.`);
+    }
+  }
+
+  return errors;
+}
+
+function migrateLegacySettingsFile(value: Record<string, unknown>, errors: string[]): ParseSuccess<SettingsFile> | ParseFailure {
   if (!isRecord(value.baseSettings)) errors.push("baseSettings must be an object.");
   if (!Array.isArray(value.periods)) errors.push("periods must be an array.");
 
   const baseSettings = isRecord(value.baseSettings) ? mergeSettings(value.baseSettings as Partial<Settings>) : defaultSettings();
-  const periods = Array.isArray(value.periods) ? value.periods : [];
-  periods.forEach((period, index) => errors.push(...validateSettingsPeriod(period, index)));
+  const legacyPeriods = Array.isArray(value.periods) ? value.periods : [];
+  legacyPeriods.forEach((period, index) => errors.push(...validateLegacySettingsPeriod(period, index)));
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  const periods: SettingsPeriodMap = { "*": settingsToPeriodSettings(baseSettings) };
+  for (const period of legacyPeriods as Partial<LegacySettingsPeriod>[]) {
+    const key = period.effectiveFrom ?? "*";
+    if (key !== "*" && !isIsoDate(key)) continue;
+    periods[key] = mergePeriodSettings({ ...settingsToPeriodSettings(baseSettings), ...(period.overrides ?? {}) });
+  }
+
+  return {
+    ok: true,
+    value: {
+      $schema: typeof value.$schema === "string" ? value.$schema : undefined,
+      schema: "wtc-settings/v2",
+      preferences: settingsToPreferences(baseSettings),
+      periods: mergeSettingsPeriods(periods),
+    },
+  };
+}
+
+export function validateSettingsFile(value: unknown): ParseSuccess<SettingsFile> | ParseFailure {
+  if (!isRecord(value)) return { ok: false, errors: ["settings file must be an object."] };
+  const errors: string[] = [];
+  if (value.schema === "wtc-settings/v1") return migrateLegacySettingsFile(value, errors);
+
+  if (value.schema !== "wtc-settings/v2") errors.push("schema must be wtc-settings/v2.");
+  if (!isRecord(value.preferences)) errors.push("preferences must be an object.");
+  if (!isRecord(value.periods)) errors.push("periods must be an object.");
+
+  const preferences = isRecord(value.preferences)
+    ? mergeSettingsPreferences(value.preferences as Partial<Settings>)
+    : defaultSettingsPreferences();
+  const periodMap = isRecord(value.periods) ? value.periods : {};
+
+  if (!Object.prototype.hasOwnProperty.call(periodMap, "*")) errors.push("periods.* is required.");
+  for (const [key, period] of Object.entries(periodMap)) {
+    if (key !== "*" && !isIsoDate(key)) errors.push(`periods key ${key} must be * or YYYY-MM-DD.`);
+    errors.push(...validatePeriodSettings(period, key));
+  }
 
   if (errors.length > 0) return { ok: false, errors };
 
@@ -381,9 +551,9 @@ export function validateSettingsFile(value: unknown): ParseSuccess<SettingsFile>
     ok: true,
     value: {
       $schema: typeof value.$schema === "string" ? value.$schema : undefined,
-      schema: "wtc-settings/v1",
-      baseSettings,
-      periods: mergeSettingsPeriods(periods as Partial<SettingsPeriod>[]),
+      schema: "wtc-settings/v2",
+      preferences,
+      periods: mergeSettingsPeriods(periodMap),
     },
   };
 }
@@ -404,11 +574,11 @@ export function createWorkEntriesFile(entries: Record<string, Entry>): WorkEntri
   };
 }
 
-export function createSettingsFile(baseSettings: Settings, periods: SettingsPeriod[]): SettingsFile {
+export function createSettingsFile(preferences: Partial<Settings>, periods: SettingsPeriodMap): SettingsFile {
   return {
     $schema: settingsSchemaUrl(),
-    schema: "wtc-settings/v1",
-    baseSettings,
+    schema: "wtc-settings/v2",
+    preferences: settingsToPreferences(preferences),
     periods: mergeSettingsPeriods(periods),
   };
 }

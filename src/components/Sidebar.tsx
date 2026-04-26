@@ -7,6 +7,7 @@ interface Props {
   monthIdx: number;
   monthsData: MonthData[];
   settings: Settings;
+  monthlySettings: Settings[];
   t: Translations;
   onPickMonth: (m: number) => void;
 }
@@ -19,7 +20,7 @@ function statusColor(st: string) {
   return st === "ok" ? "var(--accent-ok)" : st === "over" ? "var(--accent-bad)" : "var(--accent-warn)";
 }
 
-export default function Sidebar({ year, monthIdx, monthsData, settings, t, onPickMonth }: Props) {
+export default function Sidebar({ year, monthIdx, monthsData, settings, monthlySettings, t, onPickMonth }: Props) {
   const yearTotal = monthsData.reduce((s, m) => s + sumHours(m.data), 0);
   const yearOvertimeTotal = monthsData.reduce((s, m) => s + sumOvertimeHours(m.data, settings.dayHours), 0);
   const yearOvertimeHardMax = Math.max(settings.yearOvertimeTargetMax * 1.3, yearOvertimeTotal * 1.1, settings.yearOvertimeTargetMax + 20, 20);
@@ -55,7 +56,8 @@ export default function Sidebar({ year, monthIdx, monthsData, settings, t, onPic
       <div className="col gap-4">
         {monthsData.map(({ m, data }) => {
           const tot = sumHours(data);
-          const st  = statusFor(tot, settings.monthTargetMin, settings.monthTargetMax);
+          const monthSettings = monthlySettings[m];
+          const st  = statusFor(tot, monthSettings.monthTargetMin, monthSettings.monthTargetMax);
           return (
             <div
               key={m}
