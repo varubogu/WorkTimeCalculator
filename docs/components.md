@@ -148,9 +148,9 @@ SVG で描画する年間の月別折れ線。目標バンド、Y軸目盛、現
 
 [src/components/DeltaChip.tsx](../src/components/DeltaChip.tsx)
 
-`value` が `[min, max]` の範囲にあるかを判定し、"✓ 範囲内" / "+Xh 超過" / "−Xh 不足" の小さなチップを表示。
+`value` が `[min, max]` の範囲にあるかを判定し、"✓ 範囲内" / "+Xh 超過" / "−Xh 不足" の小さなチップを表示。`mode="ceiling"` では残業目標用の判定になり、目標値以内は次の段階までの残り時間、限界値以内は目標値からの超過時間と限界値超過までの残り時間、限界値超過は限界値からの超過時間を表示する。
 
-**Props**: `value`, `min`, `max`, `t`
+**Props**: `value`, `min`, `max`, `hourDisplay`, `t`, `mode`
 
 ---
 

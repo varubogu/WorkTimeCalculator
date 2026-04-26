@@ -27,7 +27,7 @@ SES エンジニアの月次・年次作業時間を見積もり、目標範囲�
   - **holiday** (`holi`): 祝日（色付け）
   - **off** (`off`): 勤務なし
 - 上部には月合計と、目標範囲（min–max）との差分チップ（[DeltaChip](../src/components/DeltaChip.tsx)）とプログレスバー（[RangeProgress](../src/components/RangeProgress.tsx)）。
-- 月合計の下に、残業時間のみを対象にした「目標値」と「限界値」、差分チップ、プログレスバーを表示します。
+- 月合計の下に、残業時間のみを対象にした「目標値」と「限界値」、差分チップ、プログレスバーを表示します。差分チップは、目標値以内なら目標値超過までの残り時間、限界値以内なら目標値からの超過時間と限界値超過までの残り時間を表示します。
 - `定時を一括入力` ボタンで、表示中の月の平日へ定時勤務をまとめて登録できます。
   - 有効期間付き設定がある場合、その日の `dayHours` / `dayStart` / `breakMin` を使って日別に登録します。
 - 土日・祝日・勤務なしの日もクリックして勤務記録を入力できます。
@@ -119,6 +119,8 @@ SES エンジニアの月次・年次作業時間を見積もり、目標範囲�
 | **withinTarget** | `value ≤ target` | 緑 |
 | **withinLimit** | `target < value ≤ limit` | アンバー |
 | **limitExceeded** | `value > limit` | 赤 |
+
+残業時間の差分チップでは、`withinTarget` は `target - value` を「残り」として表示します。`withinLimit` は `value - target` の超過分に加えて、`limit - value` を「残り」として表示します。
 
 総作業時間と残業時間では判定ルールが異なり、[DeltaChip](../src/components/DeltaChip.tsx)、[RangeProgress](../src/components/RangeProgress.tsx)、[YearTimelineChart](../src/components/YearTimelineChart.tsx) でそれぞれに応じた色分けを行います。
 
