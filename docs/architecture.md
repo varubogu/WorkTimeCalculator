@@ -80,7 +80,8 @@ WorkTimeCalculator/
 3. `buildMonthsData(year, preferences, settingsPeriods, holidayDates)` が 12ヶ月分の `MonthData[]` を生成。
    - 各日について `resolveSettingsForDate()` で有効な設定を解決し、`getRealMonthData` が `loadEntry(dateStr, breakMin)` で localStorage から `Entry` を取得。
    - 種別（`reg` / `ot` / `off` / `vac` / `holi` / `wknd`）と実働時間（`hrs`）を計算。
-4. `MonthData[]` は `useMemo` でキャッシュされ、`year`・`preferences`・`settingsPeriods`・`holidayDates`・`tick`（更新カウンタ）に依存。
+4. 設定ダイアログを開くときは、表示中の月初日に対して `resolveSettingsPeriodKeyForDate()` で有効な期間キーを解決し、その期間を初期選択する。
+5. `MonthData[]` は `useMemo` でキャッシュされ、`year`・`preferences`・`settingsPeriods`・`holidayDates`・`tick`（更新カウンタ）に依存。
 
 ### 書き込み
 

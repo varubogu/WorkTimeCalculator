@@ -193,7 +193,7 @@ SVG で描画する年間の月別折れ線。目標バンド、Y軸目盛、現
 
 [src/components/SettingsModal.tsx](../src/components/SettingsModal.tsx)
 
-設定ダイアログ。適用開始日キー（`*` または `YYYY-MM-DD`）のプルダウンで対象期間を切り替え、1日の定時時間、定時開始時刻、時刻入力の刻み、デフォルト休憩、月目標、年目標、祝日自動反映フラグを編集する。`*` は削除不可の初期期間で、日付キーの期間は次の適用開始日の前日まで有効。
+設定ダイアログ。適用開始日キー（`*` または `YYYY-MM-DD`）のプルダウンで対象期間を切り替え、1日の定時時間、定時開始時刻、時刻入力の刻み、デフォルト休憩、月目標、年目標、祝日自動反映フラグを編集する。`*` は削除不可の初期期間で、日付キーの期間は次の適用開始日の前日まで有効。初期選択は親から渡された `initialSelectedPeriodKey` を使い、表示中の月に有効な期間を開く。
 
 **Props**
 
@@ -201,6 +201,7 @@ SVG で描画する年間の月別折れ線。目標バンド、Y軸目盛、現
 |------|------|------|
 | `preferences` | `SettingsPreferences` | 共通設定（初期値） |
 | `settingsPeriods` | `SettingsPeriodMap` | 現在の期間設定（初期値） |
+| `initialSelectedPeriodKey` | `string \| undefined` | 初期選択する期間キー。存在しない場合は `*` |
 | `t` | `Translations` | i18n 辞書 |
 | `onSave` | `(preferences: SettingsPreferences, periods: SettingsPeriodMap) => void` | 保存時 |
 | `onClose` | `() => void` | 閉じる |

@@ -10,6 +10,7 @@ import {
   loadSettingsPeriods,
   mergeSettingsPreferences,
   resolveSettingsForDate,
+  resolveSettingsPeriodKeyForDate,
   saveSettings,
   saveSettingsPeriods,
   saveEntry,
@@ -135,6 +136,10 @@ export default function App() {
   const currentMonthSettings = useMemo(
     () => resolveSettingsForDate(preferences, settingsPeriods, isoDate(year, monthIdx, 1)),
     [preferences, settingsPeriods, year, monthIdx],
+  );
+  const currentMonthSettingsPeriodKey = useMemo(
+    () => resolveSettingsPeriodKeyForDate(settingsPeriods, isoDate(year, monthIdx, 1)),
+    [settingsPeriods, year, monthIdx],
   );
   const yearSettings = useMemo(
     () => resolveSettingsForDate(preferences, settingsPeriods, isoDate(year, 0, 1)),
@@ -590,6 +595,7 @@ export default function App() {
       )}
       {settingsOpen && (
         <SettingsModal preferences={preferences} settingsPeriods={settingsPeriods} t={t}
+          initialSelectedPeriodKey={currentMonthSettingsPeriodKey}
           onSave={handleSaveSettings} onClose={() => setSettingsOpen(false)} />
       )}
       <input

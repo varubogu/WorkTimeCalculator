@@ -57,6 +57,44 @@ describe("SettingsModal", () => {
     );
   });
 
+  it("初期選択キーが指定された場合はその期間を表示する", () => {
+    const periods = {
+      "*": { ...defaultSettings(), dayHours: 7.5, dayStart: "08:30", breakMin: 45, timeStepMin: 30 },
+      "2026-05-01": { ...defaultSettings(), dayHours: 6, dayStart: "10:00", breakMin: 30, timeStepMin: 15 },
+    };
+
+    render(
+      <SettingsModal
+        preferences={defaultSettingsPreferences()}
+        settingsPeriods={periods}
+        initialSelectedPeriodKey="2026-05-01"
+        t={I18N.ja}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("編集する期間")).toHaveDisplayValue("2026-05-01");
+    expect(screen.getByLabelText("1日の定時時間")).toHaveValue(6);
+    expect(screen.getByLabelText("定時開始時刻")).toHaveValue("10:00");
+  });
+
+  it("初期選択キーが存在しない場合は * にフォールバックする", () => {
+    render(
+      <SettingsModal
+        preferences={defaultSettingsPreferences()}
+        settingsPeriods={defaultSettingsPeriods()}
+        initialSelectedPeriodKey="2026-05-01"
+        t={I18N.ja}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("編集する期間")).toHaveDisplayValue("*");
+    expect(screen.getByLabelText("適用開始日")).toHaveValue("*");
+  });
+
   it("新しい適用開始日を追加して保存できる", () => {
     const onSave = vi.fn();
 

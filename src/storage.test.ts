@@ -4,6 +4,7 @@ import {
   clearEntry,
   defaultSettingsPreferences,
   defaultSettings,
+  defaultSettingsPeriods,
   loadSettingsPeriods,
   isoDate,
   loadEntry,
@@ -11,6 +12,7 @@ import {
   mergeSettingsPeriods,
   mergeSettings,
   resolveSettingsForDate,
+  resolveSettingsPeriodKeyForDate,
   saveEntry,
   saveSettings,
   saveSettingsPeriods,
@@ -116,6 +118,19 @@ describe("storage helpers", () => {
       dayStart: "08:30",
       breakMin: 45,
     });
+  });
+
+  it("指定日に有効な設定期間キーを解決する", () => {
+    expect(resolveSettingsPeriodKeyForDate(defaultSettingsPeriods(), "2026-04-01")).toBe("*");
+
+    const periods = mergeSettingsPeriods({
+      "*": { ...defaultSettings(), dayHours: 8 },
+      "2026-05-01": { ...defaultSettings(), dayHours: 7.5 },
+    });
+
+    expect(resolveSettingsPeriodKeyForDate(periods, "2026-04-30")).toBe("*");
+    expect(resolveSettingsPeriodKeyForDate(periods, "2026-05-01")).toBe("2026-05-01");
+    expect(resolveSettingsPeriodKeyForDate(periods, "2026-06-01")).toBe("2026-05-01");
   });
 
   it("期間が空なら全期間の初期設定を自動作成する", () => {

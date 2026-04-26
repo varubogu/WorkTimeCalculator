@@ -272,10 +272,18 @@ export function resolveSettingsForDate(
   dateStr: string,
 ): Settings {
   const normalized = mergeSettingsPeriods(periods);
+  const key = resolveSettingsPeriodKeyForDate(normalized, dateStr);
+  return mergeSettings({ ...normalized[key], ...preferences });
+}
+
+export function resolveSettingsPeriodKeyForDate(
+  periods: SettingsPeriodMap,
+  dateStr: string,
+): string {
+  const normalized = mergeSettingsPeriods(periods);
   const matchingKeys = sortPeriodKeys(Object.keys(normalized))
     .filter(periodKey => periodKey === "*" || periodKey <= dateStr);
-  const key = matchingKeys[matchingKeys.length - 1] ?? "*";
-  return mergeSettings({ ...normalized[key], ...preferences });
+  return matchingKeys[matchingKeys.length - 1] ?? "*";
 }
 
 export function hasAnyHolidayPeriod(periods: SettingsPeriodMap): boolean {

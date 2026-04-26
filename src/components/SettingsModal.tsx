@@ -9,23 +9,34 @@ import {
 interface Props {
   preferences: SettingsPreferences;
   settingsPeriods: SettingsPeriodMap;
+  initialSelectedPeriodKey?: string;
   t: Translations;
   onSave: (preferences: SettingsPreferences, periods: SettingsPeriodMap) => void;
   onClose: () => void;
 }
 
-export default function SettingsModal({ preferences, settingsPeriods, t, onSave, onClose }: Props) {
+export default function SettingsModal({
+  preferences,
+  settingsPeriods,
+  initialSelectedPeriodKey,
+  t,
+  onSave,
+  onClose,
+}: Props) {
   type NumericPeriodSettingKey = {
     [K in keyof PeriodSettings]: PeriodSettings[K] extends number ? K : never
   }[keyof PeriodSettings];
 
   const normalizedPeriods = mergeSettingsPeriods(settingsPeriods);
+  const initialKey = initialSelectedPeriodKey && normalizedPeriods[initialSelectedPeriodKey]
+    ? initialSelectedPeriodKey
+    : "*";
   const [prefs, setPrefs] = useState<SettingsPreferences>({ ...preferences });
   const [periods, setPeriods] = useState<SettingsPeriodMap>(normalizedPeriods);
-  const [selectedKey, setSelectedKey] = useState<string>("*");
+  const [selectedKey, setSelectedKey] = useState<string>(initialKey);
   const [isAddingPeriod, setIsAddingPeriod] = useState(false);
   const [newEffectiveFrom, setNewEffectiveFrom] = useState("");
-  const [effectiveFromDraft, setEffectiveFromDraft] = useState("*");
+  const [effectiveFromDraft, setEffectiveFromDraft] = useState(initialKey);
 
   const sortedKeys = Object.keys(periods).sort((a, b) => {
     if (a === "*") return -1;
