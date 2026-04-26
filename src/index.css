@@ -302,6 +302,10 @@ h3 { font-size: 18px; line-height: 1.2; }
   background: #f8fbff;
 }
 
+.dropdown-item.danger {
+  color: var(--accent-bad);
+}
+
 .btn.sm {
   font-size: 13px;
   padding: 5px 9px;

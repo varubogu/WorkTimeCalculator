@@ -11,6 +11,7 @@ import {
   mergeSettingsPreferences,
   resolveSettingsForDate,
   resolveSettingsPeriodKeyForDate,
+  clearEntry,
   saveSettings,
   saveSettingsPeriods,
   saveEntry,
@@ -49,6 +50,9 @@ import SettingsModal   from "./components/SettingsModal";
 
 // ── View tabs ──────────────────────────────────────────
 type View = "calendar" | "chart";
+type BulkRegularMode = "empty" | "overwrite";
+
+const BULK_REGULAR_LONG_PRESS_MS = 550;
 
 function ViewTabs({ view, setView, t }: { view: View; setView: (v: View) => void; t: Translations }) {
   return (
@@ -126,11 +130,36 @@ export default function App() {
   const [settingsImportAccept, setSettingsImportAccept] = useState(".json,.yaml,.yml");
   const workFileInputRef = useRef<HTMLInputElement | null>(null);
   const settingsFileInputRef = useRef<HTMLInputElement | null>(null);
+  const bulkRegularMenuRef = useRef<HTMLDivElement | null>(null);
+  const bulkRegularLongPressTimerRef = useRef<number | null>(null);
+  const bulkRegularLongPressTriggeredRef = useRef(false);
+  const [bulkRegularMenuOpen, setBulkRegularMenuOpen] = useState(false);
 
   useEffect(() => {
     document.body.classList.toggle("dark", dark);
     document.documentElement.lang = lang;
   }, [dark, lang]);
+
+  useEffect(() => {
+    if (!bulkRegularMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!bulkRegularMenuRef.current?.contains(event.target as Node)) {
+        setBulkRegularMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setBulkRegularMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [bulkRegularMenuOpen]);
 
   const t = I18N[lang];
   const currentMonthSettings = useMemo(
@@ -202,12 +231,22 @@ export default function App() {
     setTick(n => n + 1);
   };
 
-  const handleFillRegularHours = () => {
-    const targets = currentMonthData.filter(d => d.isWorking && !d.isHoliday);
-    const hasExisting = targets.some(d => d.entry.start || d.entry.end || d.entry.vac);
-    if (hasExisting && !window.confirm(t.bulkRegularOverwriteConfirm)) return;
+  const hasEntryContent = (entry: Entry) => Boolean(entry.start || entry.end || entry.vac);
 
-    for (const day of targets) {
+  const regularHourTargets = () => currentMonthData.filter(d => d.isWorking && !d.isHoliday);
+
+  const handleFillRegularHours = (mode: BulkRegularMode = "empty") => {
+    const targets = currentMonthData.filter(d => d.isWorking && !d.isHoliday);
+    if (mode === "overwrite") {
+      const hasExisting = targets.some(d => hasEntryContent(d.entry));
+      if (hasExisting && !window.confirm(t.bulkRegularOverwriteConfirm)) return;
+    }
+
+    const fillTargets = mode === "empty"
+      ? targets.filter(d => !hasEntryContent(d.entry))
+      : targets;
+
+    for (const day of fillTargets) {
       const daySettings = resolveSettingsForDate(preferences, settingsPeriods, day.dateStr);
       const totalMinutes = daySettings.dayHours * 60 + daySettings.breakMin;
       const end = addMinutesToTime(daySettings.dayStart, totalMinutes);
@@ -224,6 +263,33 @@ export default function App() {
     }
     setTick(n => n + 1);
   };
+
+  const handleClearRegularHours = () => {
+    const targets = regularHourTargets().filter(d => hasEntryContent(d.entry));
+    if (targets.length === 0) return;
+    if (!window.confirm(t.bulkRegularClearConfirm)) return;
+
+    for (const day of targets) {
+      clearEntry(day.dateStr);
+    }
+    setTick(n => n + 1);
+  };
+
+  const clearBulkRegularLongPressTimer = () => {
+    if (bulkRegularLongPressTimerRef.current === null) return;
+    window.clearTimeout(bulkRegularLongPressTimerRef.current);
+    bulkRegularLongPressTimerRef.current = null;
+  };
+
+  const openBulkRegularMenu = () => {
+    setBulkRegularMenuOpen(true);
+  };
+
+  const bulkRegularMenuItems = [
+    { label: t.bulkRegularFillEmpty, onSelect: () => handleFillRegularHours("empty") },
+    { label: t.bulkRegularFillOverwrite, onSelect: () => handleFillRegularHours("overwrite") },
+    { label: t.bulkRegularClear, onSelect: handleClearRegularHours, danger: true },
+  ];
 
   const handleLang = (v: Lang) => {
     setLang(v);
@@ -365,7 +431,59 @@ export default function App() {
           <span className="mono muted small">{t.monthTarget}: {fmtRange(settings.monthTargetMin, settings.monthTargetMax, settings.hourDisplay)}</span>
         </div>
         <div className="row gap-8" style={{ alignItems: "center" }}>
-          <button className="btn sm" onClick={handleFillRegularHours}>{t.bulkRegularFill}</button>
+          <div ref={bulkRegularMenuRef} className="dropdown-action">
+            <button
+              type="button"
+              className="btn sm"
+              onClick={event => {
+                if (bulkRegularLongPressTriggeredRef.current) {
+                  event.preventDefault();
+                  bulkRegularLongPressTriggeredRef.current = false;
+                  return;
+                }
+                handleFillRegularHours("empty");
+              }}
+              onContextMenu={event => {
+                event.preventDefault();
+                clearBulkRegularLongPressTimer();
+                openBulkRegularMenu();
+              }}
+              onPointerDown={event => {
+                if (event.pointerType === "mouse") return;
+                clearBulkRegularLongPressTimer();
+                bulkRegularLongPressTriggeredRef.current = false;
+                bulkRegularLongPressTimerRef.current = window.setTimeout(() => {
+                  bulkRegularLongPressTriggeredRef.current = true;
+                  openBulkRegularMenu();
+                }, BULK_REGULAR_LONG_PRESS_MS);
+              }}
+              onPointerUp={clearBulkRegularLongPressTimer}
+              onPointerCancel={clearBulkRegularLongPressTimer}
+              onPointerLeave={clearBulkRegularLongPressTimer}
+              aria-haspopup="menu"
+              aria-expanded={bulkRegularMenuOpen}
+            >
+              {t.bulkRegularFill}
+            </button>
+            {bulkRegularMenuOpen && (
+              <div className="dropdown-menu right" role="menu">
+                {bulkRegularMenuItems.map(item => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    className={`dropdown-item${item.danger ? " danger" : ""}`}
+                    role="menuitem"
+                    onClick={() => {
+                      setBulkRegularMenuOpen(false);
+                      item.onSelect();
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <span className="caveat" aria-label={t.totalHours} style={{ fontSize: 22 }}>{fmtH(currentTotal, settings.hourDisplay)}</span>
           <DeltaChip value={currentTotal} min={settings.monthTargetMin} max={settings.monthTargetMax}
             hourDisplay={settings.hourDisplay} t={t} />

@@ -187,7 +187,11 @@ export interface Translations {
   prev: string;
   next: string;
   bulkRegularFill: string;
+  bulkRegularFillEmpty: string;
+  bulkRegularFillOverwrite: string;
+  bulkRegularClear: string;
   bulkRegularOverwriteConfirm: string;
+  bulkRegularClearConfirm: string;
   bulkRegularTimeOverflow: string;
   workFile: string;
   settingsFile: string;
